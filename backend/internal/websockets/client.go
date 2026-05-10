@@ -1,119 +1,158 @@
 package websockets
 
 import (
-	"github.com/gorilla/websocket"
 	"backend/internal/models"
-    "backend/internal/repository"
-    "time"
-    "log"
+	"log"
+	"net/http"
+	"time"
 
+	"github.com/gorilla/websocket"
 )
 
-
-type Client struct {
-    // Puntero al Hub central (dirección de memoria del director de tráfico)
-    hub *Hub
-    // Puntero a la conexión WebSocket real con el celular/navegador
-    conn *websocket.Conn
-    // Un canal (channel) personal para los mensajes que el Hub le quiere enviar a ESTE cliente
-    send chan models.Telemetria
-
-    telemetriaService *repository.TelemetriaRepository
-}
-
-//Uso del patron Pumps, dos goroutines por cliente conectado, lectura y escritura
-
-//Constantes de tiempo
 const (
 
-	writeWait      = 10 * time.Second    // timeout para escrituras, Tiempo máximo permitido para escribir un mensaje en la red
-	pongWait       = 60 * time.Second    // tiempo de espera por un Pong
-	pingPeriod     = (pongWait * 9) / 10 // con qué frecuencia enviamos Ping
-	
+	//Tiempo de espera para el Pong
+	pongWait = 60 * time.Second
+
+	//Tiempo de espera escritura, pasa limite mata coneción con cliente
+	writeWait  = 10 * time.Second
+
+	//Tiempo espera para el ping
+	pingWait = 54 * time.Second
 )
 
+var Upgrader = websocket.Upgrader{
+	ReadBufferSize: 1024,
+	WriteBufferSize: 1024,
 
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Permitir conexiones desde cualquier origen (ESP32/Frontend)
+	},
+}
 
-//Lectura en la red
+type Client struct {
 
-func (c *Client) readPump() {
+	//CONNEC webSocket
+	conn *websocket.Conn
 
-    // Si la función termina o falla, desconectamos al cliente del Hub y cerramos la conexión
-    defer func () {
-        c.hub.unregister <- c
-        c.conn.Close()
-    }()
+	//Canal de envio de datos, tipo byte por datos  en TCP
+	send chan []byte
 
-    //Configurar el tiempo inicial
-    c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	//Admin
+	hub *Hub
+	
+}
 
-    //Decirle a Gorilla que hacer cuando reciba el "Pong"
-    c.conn.SetPongHandler(func(string) error { 
-        c.conn.SetReadDeadline(time.Now().Add(pongWait))
-        return nil 
-    })
-
-    //Bucle infinito
-
-    for {
-        var telemetria models.Telemetria
-        
-        err := c.conn.ReadJSON(&telemetria)
-        if err != nil {
-            // Si hay un error (ej. se acabó el tiempo límite o perdió señal), rompemos el bucle
-            log.Printf("Error de lectura o cliente desconectado: %v", err)
-            break
-        }
-
-        // Si recibimos una coordenada, ¡también reiniciamos el reloj para ser amables!
-        c.conn.SetReadDeadline(time.Now().Add(pongWait))
-
-        // Enviamos la coordenada al director de tráfico (Hub)
-        c.hub.broadcast <- telemetria
-
-        go c.telemetriaService.GuardarTelemetria(&telemetria)
+func NewClient(hub *Hub, conn *websocket.Conn) *Client {
+    return &Client{
+		hub: hub,
+        conn: conn,
+        send: make(chan []byte, 256), // Buffer de 256 mensajes, para que el hub pueda meter mensajes
     }
+}
+
+
+func(c *Client) ReadPump() {
+
+	defer func(){
+		c.hub.Unregister <- c
+		c.conn.Close()//cierra conexión TCP
+	}()
+
+	//Limites de seguridad
+	c.conn.SetReadLimit(512)//si no se define, el cliente puede tumbar el servidor con datos grandes
+	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetPongHandler(func(string) error { 
+		c.conn.SetReadDeadline(time.Now().Add(pongWait));
+	     return nil 
+	})
+
+	//Loop de lectura infinito, se rompe unicamente con un error
+	for {
+		var msg models.Telemetria
+		err :=  c.conn.ReadJSON(&msg)
+
+		if err != nil {
+			log.Print(err)
+			break
+		}
+
+	//Enviar datos al hub
+		c.hub.Broadcast <- msg		
+
+	}
 
 }
 
-func (c *Client) writePump() {
-    // Creamos nuestro "metrónomo" que sonará cada 54 segundos
-    ticker := time.NewTicker(pingPeriod)
-    
-    // Al salir, limpiamos el ticker y cerramos la conexión
-    defer func() {
-        ticker.Stop()
-        c.conn.Close()
-    }()
+func (c *Client) WritePump(){
+	 
+	//El ticker se utiliza para enviar un latido
+	ticker :=  time.NewTicker(pingWait)
 
-    for {
-        // Usamos SELECT para escuchar MÚLTIPLES canales al mismo tiempo
-        select {
-        
-        // CASO A: El Hub nos envió una coordenada por nuestro canal personal
-        case coordenada, ok := <-c.send:
-            c.conn.SetWriteDeadline(time.Now().Add(writeWait)) // Damos 10s para enviarlo
-            if !ok {
-                // Si el Hub cerró el canal, significa que debemos desconectar a este cliente
-                c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+	defer func() {
+		ticker.Stop()
+		c.conn.Close()
+	}()
+
+	for {
+		//Select por si es ticker o write
+
+		select{
+		case message, ok :=  <- c.send:
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			
+			if !ok {
+				//Avisar que voy a cerrar la conexión para que el cliente pueda limpiar memoria
+				//Frame de cierre puede llevar informacion en el payload, por eso el byte
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+			//Abrir flujo de escritura hacia el cliente
+			// // escritor 'w' y le ponemos la etiqueta "Es Texto".
+			// w, err := c.conn.NextWriter(websocket.TextMessage)
+
+			// if err != nil{
+			// 	log.Print(err)
+			// 	return
+			// }
+			// //Escribir mensaje en la red
+			// w.Write(mensaje)
+
+			// //batching
+			// //Mensajes acumulados en la RAM
+			// n := len(c.send)
+
+			// for i :=  0; i < n ; i++{
+			// 	w.Write(newLine)
+			// 	w.Write(<-c.send)
+			// }
+
+			// //Mandar todo si no hay error
+
+			// if err := w.Close() ; err != nil{
+			// 	log.Print(err)
+			// 	return
+			// }
+
+			// ==========================================
+            // VERSIÓN IOT (Simple y Directa)
+            // Cero saltos de línea, cero agrupamiento.
+            // Mandamos exactamente el JSON que llegó del Hub.
+            // ==========================================
+            err := c.conn.WriteMessage(websocket.TextMessage, message)
+            
+            if err != nil {
+                // Si hay error de red al escribir, matamos la conexión
                 return
             }
 
-            // Enviamos el JSON al celular/navegador del usuario
-            err := c.conn.WriteJSON(coordenada)
-            if err != nil {
-                return // Si falla la red, salimos
-            }
-
-        // CASO B: ¡Sonó el metrónomo! (Pasaron 54 segundos)
-        case <-ticker.C:
-            c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-            
-            // Enviamos el mensaje Ping oculto
-            err := c.conn.WriteMessage(websocket.PingMessage, nil)
-            if err != nil {
-                return // Si no pudimos enviar el Ping, la conexión está muerta, salimos.
-            }
-        }
-    }
+		case <-ticker.C:
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
+	}
 }
+
+
