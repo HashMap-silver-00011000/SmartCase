@@ -16,7 +16,6 @@ CREATE TABLE sede (
 -- 3. Tabla Usuario
 CREATE TABLE usuario (
     id_usuario UUID PRIMARY KEY,
-    id_sede UUID NOT NULL REFERENCES sede(id_sede),
     nombre_completo VARCHAR NOT NULL,
     -- Restricción de roles según tu solicitud
     rol VARCHAR NOT NULL CHECK (rol IN ('coductor', 'receptor', 'admin')),
