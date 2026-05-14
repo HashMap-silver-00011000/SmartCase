@@ -92,3 +92,10 @@ ALTER COLUMN id_viaje SET DEFAULT gen_random_uuid();
 -- 8. Actualizar Tabla Telemetria
 ALTER TABLE telemetria 
 ALTER COLUMN id_telemetria SET DEFAULT gen_random_uuid();
+
+ALTER TABLE viaje
+ADD COLUMN id_usuario_receptor UUID REFERENCES usuario(id_usuario);
+
+-- Después de actualizar los registros existentes:
+ALTER TABLE viaje
+ALTER COLUMN id_usuario_receptor SET NOT NULL;
