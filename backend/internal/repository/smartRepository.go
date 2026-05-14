@@ -21,11 +21,11 @@ func NewSmartCaseRepository(db *sqlx.DB) *SmartRepository{
 	return &SmartRepository{db:db}
 }
 
-func (r *SmartRepository) CrearSede(Sede *models.SmartCase) error {
+func (r *SmartRepository) CrearSede(smart *models.SmartCase) error {
 
 	_ ,err := r.db.NamedExec(`INSERT INTO SmartCase 
     						(id_caja, estado_solenoide, organo) 
-							VALUES (:id_caja, :estado_solenoide, :organo)`, Sede)
+							VALUES (:id_caja, :estado_solenoide, :organo)`, smart)
 
     log.Printf("Error creating SmartCase: %v", err)
     return err
