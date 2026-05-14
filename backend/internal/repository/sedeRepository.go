@@ -21,11 +21,11 @@ func NewSedeRepository(db *sqlx.DB) *SedeRepository{
 	return &SedeRepository{db:db}
 }
 
-func (r *SedeRepository) CrearSede(Sede *models.Sede) error {
+func (r *SedeRepository) CrearSede(sede *models.Sede) error {
 
 	_ ,err := r.db.NamedExec(`INSERT INTO Sede 
     						(id_Sede, id_clinica nombre) 
-							VALUES (:id_Sede, :id_clinica, :nombre)`, Sede)
+							VALUES (:id_Sede, :id_clinica, :nombre)`, sede)
 
     log.Printf("Error creating Sede: %v", err)
     return err
