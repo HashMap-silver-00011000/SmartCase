@@ -3,7 +3,7 @@ package handlers
 import (
 	"backend/internal/models"
 	"backend/internal/service"
-
+	
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -17,9 +17,8 @@ func NewAuthHandler(svc *service.UsuarioService) *AuthHandler {
 }
 
 type RegistroInput struct {
-	Nombre    string `json:"nombre"`
-	Apellidos string `json:"apellidos"`
-	Rol       string `json:"rol"`
+	Nombre    string `json:"nombre_completo"`
+	Rol     string    `json:"rol"`
 	Email     string `json:"email"`
 	Password  string `json:"password"`
 }
@@ -38,14 +37,16 @@ func (h *AuthHandler) Registro(c *gin.Context) {
 		return
 	}
 
+	
+	
 	usuario := &models.Usuario{
 
-		ID:        uuid.New(),
+		IDUsuario:        uuid.New(),
 		Nombre:    registroIput.Nombre,
-		Apellidos: registroIput.Apellidos,
-		Rol:       registroIput.Rol,
-		Email:     registroIput.Email,
+		Rol  :       registroIput.Rol,
+		Correo:     registroIput.Email,
 		Password:  registroIput.Password,
+	
 	}
 
 	err := h.svc.NuevoUsuario(usuario)
@@ -68,7 +69,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	usuario := &models.Usuario{
-		Email:    loginInput.Email,
+		Correo:    loginInput.Email,
 		Password: loginInput.Password,
 	}
 

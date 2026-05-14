@@ -4,6 +4,8 @@ import (
 	"backend/internal/models"
 	"encoding/json"
 	"log"
+
+	"github.com/shopspring/decimal"
 )
 
 type Hub struct {
@@ -18,7 +20,7 @@ type Hub struct {
 
 }
 
-func newHub() *Hub {
+func NewHub() *Hub {
 	return &Hub{
 		Broadcast:  make(chan models.Telemetria),
 		Register:   make(chan *Client),
@@ -43,28 +45,36 @@ func (h *Hub) Run() {
         case telemetria := <-h.Broadcast:
             
             // ---------------------------------------------------------
-            // A. LÓGICA DE NEGOCIO (El Servidor es Inteligente)
-            // ---------------------------------------------------------
-            // Aquí el Hub "ve" los datos reales. Puedes evaluar umbrales:
-            // if telemetria.Temperatura > 38.0 {
+            //Umbral Temperatura Ambiente
+            // umbralTemperatura := decimal.NewFromFloat(38.0)
+            // if telemetria.TempAmbiente .GreaterThan(umbralTemperatura) {
             //     log.Println("¡ALERTA TÉRMICA DETECTADA!")
-            //     // Insertar en base de datos, enviar correo, etc.
             // }
+            // ---------------------------------------------------------
+            //Umbral Temperatura Interna
+            umbralTemperaturaInterna := decimal.NewFromFloat(20.0)
+            if telemetria.TemperaturaInterna.GreaterThan(umbralTemperaturaInterna) {
+                log.Println("¡ALERTA TÉRMICA INTERNA DETECTADA!")
+            }
 
             // ---------------------------------------------------------
-            // B. PREPARACIÓN PARA RED (Marshal)
+            //Umbral gOLPE 
+            umbralGolpe := decimal.NewFromFloat(28.0)
+            if telemetria.FuerzaGImpacto.GreaterThan(umbralGolpe) {
+                log.Println("Golpe")
+            }
+
+
             // ---------------------------------------------------------
-            // Para poder enviar esta información por el cable de red hacia los 
-            // navegadores web (writePump), debemos volver a convertir el objeto Go
-            // en un paquete de bytes (JSON).
+            // PREPARACIÓN PARA RED (Marshal)
+            // ---------------------------------------------------------
+
             mensajeBytes, err := json.Marshal(telemetria)
             if err != nil {
                 log.Println("Error serializando telemetría:", err)
                 continue // Ignora el error y sigue esperando el próximo dato
             }
 
-            // ---------------------------------------------------------
-            // C. DISTRIBUCIÓN (El Megáfono)
             // ---------------------------------------------------------
             // Repartimos el JSON en bytes a todos los clientes conectados.
 			for client := range h.Clients {

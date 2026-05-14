@@ -1,6 +1,12 @@
-import 'package:metro_gps/app/app.dart';
 import 'package:flutter/material.dart';
 
+import 'auth/ui/auth_tabs_screen.dart';
+
 void main() {
-  runApp(const EmpresaParcialApp());
+  runApp(
+    const MaterialApp(
+      title: 'Metro GPS',
+      home: AuthTabsScreen(),
+    ),
+  );
 }

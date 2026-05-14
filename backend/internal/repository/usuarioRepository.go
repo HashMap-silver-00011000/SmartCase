@@ -23,20 +23,20 @@ func NewUsuarioRepository(db *sqlx.DB) *UsuarioRepository{
 
 func (r *UsuarioRepository) CrearUsuario(usuario *models.Usuario) error {
 
-	_ ,err := r.db.NamedExec(`INSERT INTO usuario (nombre, apellidos, rol, email, password)
-				VALUES (:nombre, :apellidos, :rol, :email, :password)`, usuario)
+	_ ,err := r.db.NamedExec(`INSERT INTO usuario 
+    						(id_usuario, nombre_completo, email, password, rol) 
+							VALUES (:id_usuario, :nombre_completo, :email, :password, :rol)`, usuario)
 
     log.Printf("Error creating user: %v", err)
     return err
     
-
 }
 
 func (r *UsuarioRepository) BuscarPorEmail(usuario *models.Usuario) (*models.Usuario, error){
 
 	var usuarioEmail models.Usuario
 	//Solicitar la informacion del usuario si existe el correo
-	err := r.db.Get(&usuarioEmail, "SELECT * FROM usuario WHERE email = $1", usuario.Email)
+	err := r.db.Get(&usuarioEmail, "SELECT * FROM usuario WHERE email = $1", usuario.Correo)
 
 	if err != nil {
     	log.Fatal(err)

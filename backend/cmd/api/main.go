@@ -5,8 +5,9 @@ import (
 	
 
 	"backend/config"
-	"backend/internal/database"
+	"backend/pkg/database"
 	"backend/internal/server/routes"
+	"backend/internal/websockets"
 )
 
 func main(){
@@ -18,8 +19,13 @@ func main(){
 		log.Fatalf("Error fatal: No se pudo conectar a PostgreSQL: %v", err)
 	}
 	defer conexionDB.Close() // Asegura que la base de datos se cierre al apagar el servidor
+
+	hub := websockets.NewHub()
+
+	go hub.Run()
+
 	// 3. Configurar el Enrutador
-	router := routes.ConfigurarRutas(conexionDB)
+	router := routes.ConfigurarRutas(conexionDB,hub)
 
 	// 4. Encender el servidor
 	log.Println("Servidor operando en el puerto 8080...")
