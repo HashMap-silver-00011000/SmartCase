@@ -21,7 +21,7 @@ func NewSmartCaseRepository(db *sqlx.DB) *SmartRepository{
 	return &SmartRepository{db:db}
 }
 
-func (r *SmartRepository) CrearSede(smart *models.SmartCase) error {
+func (r *SmartRepository) CrearCaja(smart *models.SmartCase) error {
 
 	_ ,err := r.db.NamedExec(`INSERT INTO SmartCase 
     						(id_caja, estado_solenoide, organo) 

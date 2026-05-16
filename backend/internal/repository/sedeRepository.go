@@ -32,11 +32,11 @@ func (r *SedeRepository) CrearSede(sede *models.Sede) error {
     
 }
 
-func (r *SedeRepository) BuscarSede(clinica *models.Sede) (*models.Sede, error){
+func (r *SedeRepository) BuscarSede(sede *models.Sede) (*models.Sede, error){
 
 	var SedeNombre models.Sede
 	//Solicitar la informacion de la clinica si existe el correo
-	err := r.db.Get(&SedeNombre, "SELECT * FROM Sede WHERE nombre = $1", Sede.nombre)
+	err := r.db.Get(&SedeNombre, "SELECT * FROM Sede WHERE nombre = $1", sede.Nombre)
 
 	if err != nil {
     	log.Fatal(err)

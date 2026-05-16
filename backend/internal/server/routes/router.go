@@ -7,34 +7,38 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 
-	"backend/internal/repository"
-	"backend/internal/service"
 	"backend/internal/handlers"
+	"backend/internal/repository"
 	"backend/internal/server/middleware"
+	"backend/internal/service"
 	"backend/internal/websockets"
-
 )
 
 func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 
 	r := gin.Default()
-    
-    // Configuración CORS estricta requerida para Sesiones/Cookies
+
+	// Configuración CORS estricta requerida para Sesiones/Cookies
 	r.Use(cors.New(cors.Config{
-		// Si tu frontend está en el puerto 3000, debes ponerlo explícitamente. "*" no funciona con credenciales.
-		AllowOrigins:     []string{"http://localhost:3000"}, 
+		// frontend está en el puerto 3000, ponerlo explícitamente. "*" no funciona con credenciales.
+		AllowOrigins:     []string{"http://localhost:3000"},
 		AllowMethods:     []string{"POST", "GET", "OPTIONS", "PUT", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Content-Type"},
 		AllowCredentials: true, // ¡CRÍTICO PARA SESIONES!
 		MaxAge:           12 * time.Hour,
 	}))
 
-	r.Use(middleware.AuditoriaMiddleware())
-
 	// Inyecciones
+
+	//Auth
 	usuarioRepo := repository.NewUsuarioRepository(db)
 	usuarioService := service.NewUsuarioService(usuarioRepo)
 	authHandler := handlers.NewAuthHandler(usuarioService)
+
+	//Clinica
+	clinicaRepo := repository.NewClinicaRepository(db)
+	clinicaService := service.NewClinicaService(clinicaRepo)
+	clinicaHandler := handlers.NewClinicaHandler(clinicaService)
 
 	// --- RUTAS PÚBLICAS (Login / Registro) ---
 	api := r.Group("/api")
@@ -47,34 +51,28 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 	privadas := r.Group("/api/app")
 	privadas.Use(middleware.RequiereAuth()) // 1. Verifica la Cookie/Sesión
 	{
-		// ZONA MAPA (Admins y Pasajeros)
-		mapa := privadas.Group("/mapa")
-		mapa.Use(middleware.RequiereRol("admin", "pasajero")) 
-		{
-			mapa.GET("/datos", func(c *gin.Context) { c.JSON(200, gin.H{"msg": "Datos del mapa"}) })
-		}
-
-		// ZONA ADMIN (Exclusiva)
+		// ZONA ADMIN
 		panelAdmin := privadas.Group("/admin")
 		panelAdmin.Use(middleware.RequiereRol("admin"))
 		{
-			panelAdmin.POST("/crear-usuario", func(c *gin.Context) { c.JSON(200, gin.H{"msg": "OK"}) })
+			panelAdmin.POST("/crear-clinica", clinicaHandler.CrearClinica)
+
 		}
 	}
 
 	// ==========================================
 	// EL TÚNEL DE TELEMETRÍA (WebSockets con Sesiones)
 	// ==========================================
-	
+
 	// ¡Aquí está la magia de las Cookies!
 	// Como el navegador envía la Cookie de sesión automáticamente incluso al abrir un WebSocket,
 	// podemos proteger esta ruta con los mismos middlewares.
-	wsGroup := r.Group("/api/ws")
-	wsGroup.Use(middleware.RequiereAuth())             // Debe estar logueado
-	wsGroup.Use(middleware.RequiereRol("conductor"))   // SOLO para conductores
-	{
-		wsGroup.GET("/telemetria", handlers.WsHandler(hub))
-	}
+	// wsGroup := r.Group("/api/ws")
+	// wsGroup.Use(middleware.RequiereAuth())           // Debe estar logueado
+	// wsGroup.Use(middleware.RequiereRol("conductor")) // SOLO para conductores
+	// {
+	// 	wsGroup.GET("/telemetria", handlers.WsHandler(hub))
+	// }
 
 	return r
 }
