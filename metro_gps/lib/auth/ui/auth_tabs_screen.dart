@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../admin/ui/admin_clinica_screen.dart';
+import '../../core/session_store.dart';
 import '../auth_api.dart';
 import '../models/auth_models.dart';
 import '../models/usuario_rol_opciones.dart';
@@ -56,25 +58,60 @@ class _LoginFormState extends State<_LoginForm> {
     super.dispose();
   }
 
+  bool _esAdmin(String? rol) =>
+      rol != null && rol.trim().toLowerCase() == UsuarioRolBd.admin;
+
+  Future<void> _irAlPanelAdmin() {
+    return Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const AdminClinicaScreen()),
+      (_) => false,
+    );
+  }
+
   Future<void> _enviar() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _cargando = true);
-    final res = await _api.login(
-      LoginInput(email: _email.text.trim(), password: _password.text),
-    );
-    if (!mounted) return;
-    setState(() => _cargando = false);
-    final messenger = ScaffoldMessenger.of(context);
-    if (res.isSuccess) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Sesión iniciada')),
+    try {
+      final res = await _api.login(
+        LoginInput(email: _email.text.trim(), password: _password.text),
       );
-    } else {
-      messenger.showSnackBar(
+      if (!mounted) return;
+
+      final messenger = ScaffoldMessenger.of(context);
+      if (res.isSuccess) {
+        final rol = SessionStore.instance.rol ?? res.rol;
+        if (_esAdmin(rol)) {
+          await _irAlPanelAdmin();
+          return;
+        }
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              rol == null || rol.isEmpty
+                  ? 'Sesión iniciada, pero no se detectó el rol admin'
+                  : 'Sesión iniciada (${UsuarioRolBd.etiqueta(rol)})',
+            ),
+          ),
+        );
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(res.errorMessage ?? 'Error (${res.statusCode})'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(res.errorMessage ?? 'Error (${res.statusCode})'),
+          content: Text(
+            'No se pudo conectar al servidor. ¿Está el backend en '
+            'http://localhost:8080?\n$e',
+          ),
         ),
       );
+    } finally {
+      if (mounted) setState(() => _cargando = false);
     }
   }
 
@@ -90,6 +127,7 @@ class _LoginFormState extends State<_LoginForm> {
             TextFormField(
               controller: _email,
               keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
               autofillHints: const [AutofillHints.email],
               decoration: const InputDecoration(
                 labelText: 'Email',
@@ -102,6 +140,10 @@ class _LoginFormState extends State<_LoginForm> {
             TextFormField(
               controller: _password,
               obscureText: _ocultarPassword,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) {
+                if (!_cargando) _enviar();
+              },
               decoration: InputDecoration(
                 labelText: 'Contraseña',
                 border: const OutlineInputBorder(),

@@ -16,6 +16,17 @@ class AuthResponse {
 
   bool get isSuccess => statusCode >= 200 && statusCode < 300;
 
+  /// Rol devuelto por el backend (`rol` o `Rol`).
+  String? get rol {
+    final data = jsonBody;
+    if (data == null) return null;
+    for (final key in ['rol', 'Rol', 'ROL']) {
+      final v = data[key];
+      if (v is String && v.isNotEmpty) return v.trim();
+    }
+    return null;
+  }
+
   factory AuthResponse.fromHttpResponse(http.Response response) {
     Map<String, dynamic>? jsonBody;
     if (response.body.isNotEmpty) {

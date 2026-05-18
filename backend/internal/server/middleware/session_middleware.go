@@ -2,51 +2,61 @@
 package middleware
 
 import (
+
 	"net/http"
-	"github.com/gin-contrib/sessions"
+	"os"
+
+	
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+
 )
 
 // RequiereAuth verifica que el usuario haya hecho login
-func RequiereAuth() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		session := sessions.Default(c)
-		usuarioID := session.Get("usuario_id")
-		
-		if usuarioID == nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Debes iniciar sesión"})
-			return
-		}
-		c.Next()
-	}
-}
+func RequiereAuth(rolRequerido string) gin.HandlerFunc {
+	return func(c *gin.Context){
+		tokenString, err :=  c.Cookie("smart_session")
 
-// RequiereRol verifica que el rol guardado en sesión coincida con los permitidos
-func RequiereRol(rolesPermitidos ...string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		session := sessions.Default(c)
-		rolObj := session.Get("rol")
-		
-		if rolObj == nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Rol no encontrado"})
-			return
+		if err != nil {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return 
 		}
 
-		rolStr := rolObj.(string)
-		permitido := false
+		//verificar que el token es valido
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
+			return []byte(os.Getenv("SECRET")), nil
+		},jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))//aceptar header con algoritmo
+		if err != nil {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return 
+		}
 
-		for _, rol := range rolesPermitidos {
-			if rolStr == rol {
-				permitido = true
-				break
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			
+			rolDelToken, okRol := claims["rol"].(string)
+			if !okRol {
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
 			}
-		}
 
-		if !permitido {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "No tienes permisos"})
-			return
-		}
+			if rolDelToken != rolRequerido {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
 
-		c.Next()
+			idDelUsuario, okId := claims["sub"].(string)
+			if !okId {
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+			
+			c.Set("id_usuario", idDelUsuario)
+			c.Next()
+		}else {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return 
+		}
 	}
+
 }
+

@@ -40,6 +40,16 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 	clinicaService := service.NewClinicaService(clinicaRepo)
 	clinicaHandler := handlers.NewClinicaHandler(clinicaService)
 
+	//sede
+	sedeRepo := repository.NewSedeRepository(db)
+	sedeService := service.NewSedeService(sedeRepo)
+	sedeHandler :=  handlers.NewSedeHandler(sedeService)
+
+	//SmartCase
+	caseRepo := repository.NewSmartCaseRepository(db)
+	caseService := service.NewSedeService(caseRepo)
+	caseHandler := handler.NewSedeHandler(caseService)
+
 	// --- RUTAS PÚBLICAS (Login / Registro) ---
 	api := r.Group("/api")
 	{
@@ -49,14 +59,29 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 
 	// --- ZONA PRIVADA (Requiere Sesión Activa) ---
 	privadas := r.Group("/api/app")
-	privadas.Use(middleware.RequiereAuth()) // 1. Verifica la Cookie/Sesión
 	{
 		// ZONA ADMIN
-		panelAdmin := privadas.Group("/admin")
-		panelAdmin.Use(middleware.RequiereRol("admin"))
+		panelAdmin := privadas.Group("/panel-admin")
+		panelAdmin.Use(middleware.RequiereAuth("admin"))
 		{
-			panelAdmin.POST("/crear-clinica", clinicaHandler.CrearClinica)
+			panelClinica := panelAdmin.Group("/clinica") 
+			{
+				panelClinica.POST("/crear", clinicaHandler.CrearClinica)
+				panelClinica.GET("/obtener", clinicaHandler.ObtenerClinica)
+				panelClinica.GET("/lista", clinicaHandler.ObtenerClinicas)
+				panelClinica.PUT("/actualizar", clinicaHandler.ActualizarClinica)
+				panelClinica.DELETE("/borrar", clinicaHandler.EliminarClinica)
 
+				panelSede := panelClinica.Group("/sede")
+				{
+					panelSede.POST("/crear", sedeHandler.CrearSede)
+					panelSede.GET("/obtener",sedeHandler.ObtenerSede)
+					panelSede.GET("/lista",sedeHandler.ObtenerSedes)
+					panelSede.PUT("/actualizar",sedeHandler.ActualizarSede)
+					panelSede.DELETE("/borrar", sedeHandler.EliminarSede)
+				}
+			}
+			
 		}
 	}
 

@@ -4,6 +4,9 @@ import (
 	"backend/internal/models"
 	"backend/internal/repository"
 	"errors"
+	"log"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UsuarioService struct{
@@ -29,9 +32,18 @@ func (s *UsuarioService) Autenticar(usuarioE *models.Usuario) (*models.Usuario, 
 		return nil, errors.New("Credenciales no validas")
 	}
 
-	if usuario.Password != usuarioE.Password {
-		return nil, errors.New("Credenciales no validas")
+	// HashPassword, _ := bcrypt.GenerateFromPassword([]byte(usuarioE.Password), bcrypt.DefaultCost)
+
+	err = bcrypt.CompareHashAndPassword([]byte(usuario.Password), []byte(usuarioE.Password))
+
+	if err != nil {
+		log.Printf("Error de validacion en Password %v",  err)
+		return nil, err
 	}
+
+	// if usuario.Password != string(HashPassword) {
+	// 	return nil, errors.New("Credenciales no validas")
+	// }
 
 	return usuario, nil
 }

@@ -21,3 +21,46 @@ func (s *SmartService)  CrearSmart(caja *models.SmartCase) error {
 	return err
 
 }
+
+func (s *SmartService)  BuscarSmartCase(smart *models.SmartCase) (*models.SmartCase ,error) {
+	
+	smartEncontrado ,err := s.r.BuscarSmartCase(smart)
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+	return smartEncontrado, err
+}
+
+func (s *SmartService)  ListarSmartCase() (*[]models.SmartCase,error) {
+	
+	smartCase , err := s.r.ListarSmartCase()
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+	return smartCase, err
+}
+
+func (s *SmartService) EliminarSmartCase(smart *models.SmartCase) error {
+	
+	err := s.r.EliminarSmartCase(smart)
+	if err != nil {
+		log.Printf("Error en servicio al eliminar caja: %v", err)
+		return  err
+	}
+	
+	return nil
+}
+
+func (s *SmartService) ActualizarSmartCase(smart *models.SmartCase) error {
+	
+	err := s.r.ActualizarSmartCase(smart)
+	if err != nil {
+		log.Printf("Error en servicio al actualizar caja: %v", err)
+		return  err
+	}
+
+	return nil
+}
+

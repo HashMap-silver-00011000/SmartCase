@@ -3,9 +3,14 @@ package handlers
 import (
 	"backend/internal/models"
 	"backend/internal/service"
-	
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthHandler struct {
@@ -24,8 +29,9 @@ type RegistroInput struct {
 }
 
 type LoginInput struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+
+	Email    	string 		`json:"email"`
+	Password 	string 		`json:"password"`
 }
 
 func (h *AuthHandler) Registro(c *gin.Context) {
@@ -33,29 +39,35 @@ func (h *AuthHandler) Registro(c *gin.Context) {
 	var registroIput RegistroInput
 
 	if err := c.ShouldBindJSON(&registroIput); err != nil {
-		c.JSON(400, gin.H{"error ": "JSON invalido"})
+		c.JSON(http.StatusBadRequest, gin.H{"error ": "JSON invalido"})
 		return
 	}
 
+	HashPassword, bad := bcrypt.GenerateFromPassword([]byte(registroIput.Password), bcrypt.DefaultCost)
 	
-	
+	if bad != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error" :  "Error al encriptar Password"})
+		return
+	}
+
 	usuario := &models.Usuario{
 
 		IDUsuario:        uuid.New(),
 		Nombre:    registroIput.Nombre,
 		Rol  :       registroIput.Rol,
 		Correo:     registroIput.Email,
-		Password:  registroIput.Password,
+		Password:  string(HashPassword),
 	
 	}
 
 	err := h.svc.NuevoUsuario(usuario)
+	
 	if err != nil {
-		c.JSON(500, gin.H{"error": "no se pudo crear el usuario"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no se pudo crear el usuario"})
 		return
 	}
 
-	c.JSON(201, gin.H{"mensaje": "usuario creado"})
+	c.JSON(http.StatusCreated, gin.H{"mensaje": "usuario creado"})
 
 }
 
@@ -64,20 +76,38 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var loginInput LoginInput
 
 	if err := c.ShouldBindJSON(&loginInput); err != nil {
-		c.JSON(400, gin.H{"error ": "JSON invalido"})
+		c.JSON(http.StatusBadRequest, gin.H{"error ": "JSON invalido"})
 		return
 	}
 
 	usuario := &models.Usuario{
-		Correo:    loginInput.Email,
+		Correo:   loginInput.Email,
 		Password: loginInput.Password,
 	}
 
-	_, err := h.svc.Autenticar(usuario)
-
+	usuarioAuth, err := h.svc.Autenticar(usuario)
 	if err != nil {
-		c.JSON(403, gin.H{"error": "Usuario no valido"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Usuario no valido"})
+		return
 	}
-	c.JSON(200, gin.H{"Mensaje": "Usuario ingresado"})
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": usuarioAuth.IDUsuario.String(),
+		"exp": time.Now().Add(time.Hour * 24).Unix(),
+		"rol": usuarioAuth.Rol,
+	})
+
+	tokenString, bad := token.SignedString([]byte(os.Getenv("SECRET")))
+	if bad != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al firmar el token"})
+		return
+	}
+
+	c.SetCookie("smart_session", tokenString, 3600, "/", "localhost", false, true)
+
+	c.JSON(http.StatusOK, gin.H{
+		"Mensaje": "Usuario ingresado",
+		"rol":     usuarioAuth.Rol,
+	})
 
 }

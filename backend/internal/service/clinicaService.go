@@ -3,7 +3,7 @@ package service
 import (
 	"backend/internal/models"
 	"backend/internal/repository"
-	"errors"
+
 	"log"
 )
 
@@ -18,19 +18,12 @@ func NewClinicaService (r *repository.ClinicaRepository) *ClinicaService {
 
 func (s *ClinicaService)  CrearClinica (clinica *models.Clinica) error {
 	
-	clinicaDB , err := s.r.BuscarClinica(clinica)
-
-	if err != nil {
-		err := s.r.CrearClinica(clinica)
+	err := s.r.CrearClinica(clinica)
 		if err != nil {
 			log.Print(err)
 			return err
-		}
-	}
-	if clinicaDB.Nombre == clinica.Nombre {
-		return errors.New("la clinica ya existe")
-	}
 
+	}
 	return nil
 }
 

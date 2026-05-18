@@ -36,7 +36,7 @@ func (r *ClinicaRepository) BuscarClinica(clinica *models.Clinica) (*models.Clin
 
 	var ClinicaNombre models.Clinica
 	//Solicitar la informacion de la clinica si existe el nombre
-	err := r.db.Get(&ClinicaNombre, "SELECT * FROM clinica WHERE nombre = $1", clinica.Nombre)
+	err := r.db.Get(&ClinicaNombre, "SELECT * FROM clinica WHERE id_clinica = $1", clinica.IDClinica)
 
 	if err != nil {
     	log.Print(err)
@@ -59,7 +59,7 @@ func (r *ClinicaRepository) ListarClinica() (*[]models.Clinica, error) {
 
 func (r *ClinicaRepository) EliminarClinica(clinica *models.Clinica) error {
 
-	resultado ,err := r.db.NamedExec(`DELETE FROM clinica WHERE id_clinica = $1`, clinica.IDClinica)
+	resultado ,err := r.db.NamedExec(`DELETE FROM clinica WHERE id_clinica = :id_clinica`, clinica)
 
 	if err != nil {
         log.Printf("Error al eliminar la clinica: %v", err)
@@ -70,7 +70,7 @@ func (r *ClinicaRepository) EliminarClinica(clinica *models.Clinica) error {
 
 	if filasAfectadas == 0 {
         // No hubo error de SQL
-        log.Printf("No se encontró la clinica con id %s para eliminar", clinica.IDClinica)
+        log.Printf("No se encontró la clinica con Nombre %s para eliminar", clinica.Nombre)
     }
 
 	return nil

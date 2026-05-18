@@ -39,7 +39,7 @@ func (r *UsuarioRepository) BuscarPorEmail(usuario *models.Usuario) (*models.Usu
 	err := r.db.Get(&usuarioEmail, "SELECT * FROM usuario WHERE email = $1", usuario.Correo)
 
 	if err != nil {
-    	log.Fatal(err)
+    	log.Print(err)
 		return nil, err // retorna error si no encuentra nada (sql.ErrNoRows)
 	}
 	return &usuarioEmail, nil
