@@ -85,13 +85,7 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 		}
 	}
 
-	// ==========================================
-	// EL TÚNEL DE TELEMETRÍA (WebSockets con Sesiones)
-	// ==========================================
 
-	// ¡Aquí está la magia de las Cookies!
-	// Como el navegador envía la Cookie de sesión automáticamente incluso al abrir un WebSocket,
-	// podemos proteger esta ruta con los mismos middlewares.
 	// wsGroup := r.Group("/api/ws")
 	// wsGroup.Use(middleware.RequiereAuth())           // Debe estar logueado
 	// wsGroup.Use(middleware.RequiereRol("conductor")) // SOLO para conductores
