@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -20,11 +21,19 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 
 	// Configuración CORS estricta requerida para Sesiones/Cookies
 	r.Use(cors.New(cors.Config{
-		// frontend está en el puerto 3000, ponerlo explícitamente. "*" no funciona con credenciales.
-		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowOriginFunc: func(origin string) bool {
+			if origin == "" {
+				return true
+			}
+			if origin == "http://localhost:3000" {
+				return true
+			}
+			return strings.HasPrefix(origin, "http://localhost:") ||
+				strings.HasPrefix(origin, "http://127.0.0.1:")
+		},
 		AllowMethods:     []string{"POST", "GET", "OPTIONS", "PUT", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Content-Type"},
-		AllowCredentials: true, // ¡CRÍTICO PARA SESIONES!
+		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
 
@@ -34,6 +43,7 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 	usuarioRepo := repository.NewUsuarioRepository(db)
 	usuarioService := service.NewUsuarioService(usuarioRepo)
 	authHandler := handlers.NewAuthHandler(usuarioService)
+	usuarioHandler := handlers.NewUsuarioHandler(usuarioService)
 
 	//Clinica
 	clinicaRepo := repository.NewClinicaRepository(db)
@@ -43,12 +53,22 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 	//sede
 	sedeRepo := repository.NewSedeRepository(db)
 	sedeService := service.NewSedeService(sedeRepo)
-	sedeHandler :=  handlers.NewSedeHandler(sedeService)
+	sedeHandler := handlers.NewSedeHandler(sedeService)
+
+	//Ambulancia
+	ambulanciaRepo := repository.NewAmbulanciaRepository(db)
+	ambulanciaService := service.NewAmbulanciaService(ambulanciaRepo)
+	ambulanciaHandler := handlers.NewAmbulanciaHandler(ambulanciaService)
 
 	//SmartCase
-	caseRepo := repository.NewSmartCaseRepository(db)
-	caseService := service.NewSedeService(caseRepo)
-	caseHandler := handler.NewSedeHandler(caseService)
+	smartRepo := repository.NewSmartCaseRepository(db)
+	smartService := service.NewSmartService(smartRepo)
+	smartHandler := handlers.NewSmartHandler(smartService)
+
+	//Viaje
+	viajeRepo := repository.NewViajeCaseRepository(db)
+	viajeService := service.NewViajeService(viajeRepo)
+	viajeHandler := handlers.NewViajeHandler(viajeService)
 
 	// --- RUTAS PÚBLICAS (Login / Registro) ---
 	api := r.Group("/api")
@@ -75,13 +95,40 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 				panelSede := panelClinica.Group("/sede")
 				{
 					panelSede.POST("/crear", sedeHandler.CrearSede)
-					panelSede.GET("/obtener",sedeHandler.ObtenerSede)
-					panelSede.GET("/lista",sedeHandler.ObtenerSedes)
-					panelSede.PUT("/actualizar",sedeHandler.ActualizarSede)
+					panelSede.GET("/obtener", sedeHandler.ObtenerSede)
+					panelSede.GET("/lista", sedeHandler.ObtenerSedes)
+					panelSede.PUT("/actualizar", sedeHandler.ActualizarSede)
 					panelSede.DELETE("/borrar", sedeHandler.EliminarSede)
 				}
 			}
-			
+
+			panelAmbulancia := panelAdmin.Group("/ambulancia")
+			{
+				panelAmbulancia.POST("/crear", ambulanciaHandler.CrearAmbulancia)
+				panelAmbulancia.GET("/lista", ambulanciaHandler.ListarAmbulancias)
+				panelAmbulancia.GET("/obtener/:placa", ambulanciaHandler.BuscarAmbulancia)
+				panelAmbulancia.PUT("/actualizar/:id", ambulanciaHandler.ActualizarAmbulancia)
+				panelAmbulancia.DELETE("/borrar/:id", ambulanciaHandler.EliminarAmbulancia)
+			}
+
+			panelSmartCase := panelAdmin.Group("/smartcase")
+			{
+				panelSmartCase.POST("/crear", smartHandler.CrearSmart)
+				panelSmartCase.GET("/lista", smartHandler.ListarSmartCase)
+				panelSmartCase.GET("/obtener/:id", smartHandler.BuscarSmartCase)
+				panelSmartCase.PUT("/actualizar/:id", smartHandler.ActualizarSmartCase)
+				panelSmartCase.DELETE("/borrar/:id", smartHandler.EliminarSmartCase)
+			}
+
+			panelViaje := panelAdmin.Group("/viaje")
+			{
+				panelViaje.POST("/crear", viajeHandler.CrearViaje)
+			}
+
+			panelUsuario := panelAdmin.Group("/usuario")
+			{
+				panelUsuario.GET("/conductores/lista", usuarioHandler.ListarConductores)
+			}
 		}
 	}
 

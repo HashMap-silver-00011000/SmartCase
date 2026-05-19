@@ -71,13 +71,13 @@ func (h *AmbulanciaHandler) BuscarAmbulancia(c *gin.Context) {
 
 
 func (h *AmbulanciaHandler) ListarAmbulancias(c *gin.Context) {
+
 	ambulancias, err := h.s.ListarAmbulancias()
-	
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error interno al obtener la lista de ambulancias"})
 		return
 	}
-
 	c.JSON(http.StatusOK, ambulancias)
 }
 

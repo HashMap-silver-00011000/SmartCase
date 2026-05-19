@@ -32,6 +32,22 @@ func (r *UsuarioRepository) CrearUsuario(usuario *models.Usuario) error {
     
 }
 
+func (r *UsuarioRepository) ListarPorRol(rol string) (*[]models.Usuario, error) {
+	var usuarios []models.Usuario
+
+	err := r.db.Select(
+		&usuarios,
+		`SELECT id_usuario, nombre_completo, email, rol 
+		 FROM usuario WHERE rol = $1 ORDER BY nombre_completo`,
+		rol,
+	)
+	if err != nil {
+		log.Printf("Error al listar usuarios por rol: %v", err)
+		return nil, err
+	}
+	return &usuarios, nil
+}
+
 func (r *UsuarioRepository) BuscarPorEmail(usuario *models.Usuario) (*models.Usuario, error){
 
 	var usuarioEmail models.Usuario

@@ -24,6 +24,10 @@ func (s *UsuarioService) NuevoUsuario(usuario *models.Usuario) error {
 
 }
 
+func (s *UsuarioService) ListarConductores() (*[]models.Usuario, error) {
+	return s.r.ListarPorRol("coductor")
+}
+
 func (s *UsuarioService) Autenticar(usuarioE *models.Usuario) (*models.Usuario, error) {
 
 	usuario , err :=  s.r.BuscarPorEmail(usuarioE)
