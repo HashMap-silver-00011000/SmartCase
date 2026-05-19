@@ -123,12 +123,26 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 			panelViaje := panelAdmin.Group("/viaje")
 			{
 				panelViaje.POST("/crear", viajeHandler.CrearViaje)
+				panelViaje.GET("viajes-estado",  viajeHandler.ListarPorEstado)
 			}
 
 			panelUsuario := panelAdmin.Group("/usuario")
 			{
 				panelUsuario.GET("/conductores/lista", usuarioHandler.ListarConductores)
 			}
+		}
+
+		//ZONA CONDUCTORES
+
+		panelConductor := privadas.Group("/conductor")
+		panelConductor.Use(middleware.RequiereAuth("coductor"))
+		{
+			//Viaje
+			panelViaje :=  panelConductor.Group("/Viaje")
+			{
+				panelViaje.GET("/tareas-viaje", viajeHandler.ListarPorUsuario)
+			}
+
 		}
 	}
 

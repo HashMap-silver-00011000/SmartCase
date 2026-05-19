@@ -4,6 +4,8 @@ import (
 	"backend/internal/models"
 	"backend/internal/repository"
 	"log"
+
+	"github.com/google/uuid"
 )
 
 type ViajeService struct {
@@ -24,4 +26,28 @@ func(s *ViajeService) CrearViaje(viaje *models.Viaje) error{
 	}
 
 	return nil
+}
+
+func (s *ViajeService) ListarPorEstado(viaje *models.Viaje) (*[]models.Viaje, error) {
+	
+	listaViaje , err := s.r.ListarPorEstado(viaje)
+
+	if err != nil {
+		log.Printf("Error en service : %v", err)
+		return nil, err
+	}
+
+	return listaViaje, nil
+}
+
+func (s *ViajeService) ListarPorUsuario(id_usuario_conductor uuid.UUID) (*[]models.Viaje, error) {
+
+	listaViaje , err := s.r.ListarPorUsuario(id_usuario_conductor)
+
+	if err != nil {
+		log.Printf("Error en service : %v", err)
+		return nil, err
+	}
+
+	return listaViaje, nil
 }

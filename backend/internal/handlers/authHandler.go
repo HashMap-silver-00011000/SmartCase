@@ -103,11 +103,13 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("smart_session", tokenString, 3600, "/", "localhost", false, true)
+	// Domain vacío: válido al conectar por IP (móvil en red local). La app también usa `token` en JSON.
+	c.SetCookie("smart_session", tokenString, 3600, "/", "", false, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"Mensaje": "Usuario ingresado",
 		"rol":     usuarioAuth.Rol,
+		"token":   tokenString,
 	})
 
 }

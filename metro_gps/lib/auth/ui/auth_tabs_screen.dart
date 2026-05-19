@@ -1,14 +1,48 @@
 import 'package:flutter/material.dart';
 
-import '../../admin/ui/admin_clinica_screen.dart';
+import '../../admin/clinica_api.dart';
+import '../../admin/ui/admin_panel_screen.dart';
+import '../../conductor/ui/conductor_home_screen.dart';
+import '../../core/api_constants.dart';
 import '../../core/session_store.dart';
 import '../auth_api.dart';
 import '../models/auth_models.dart';
 import '../models/usuario_rol_opciones.dart';
 
 /// Pestañas Login / Registro con formularios enlazados al backend.
-class AuthTabsScreen extends StatelessWidget {
+class AuthTabsScreen extends StatefulWidget {
   const AuthTabsScreen({super.key});
+
+  @override
+  State<AuthTabsScreen> createState() => _AuthTabsScreenState();
+}
+
+class _AuthTabsScreenState extends State<AuthTabsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _abrirSiHaySesion());
+  }
+
+  bool _esAdmin(String? rol) =>
+      rol != null && rol.trim().toLowerCase() == UsuarioRolBd.admin;
+
+  bool _esConductor(String? rol) =>
+      rol != null && rol.trim().toLowerCase() == UsuarioRolBd.coductor;
+
+  void _abrirSiHaySesion() {
+    if (!ClinicaApi.sharedClient.hasSession) return;
+    final rol = SessionStore.instance.rol;
+    if (_esAdmin(rol)) {
+      Navigator.of(context, rootNavigator: true).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => const AdminPanelScreen()),
+      );
+    } else if (_esConductor(rol)) {
+      Navigator.of(context, rootNavigator: true).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => const ConductorHomeScreen()),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,9 +95,19 @@ class _LoginFormState extends State<_LoginForm> {
   bool _esAdmin(String? rol) =>
       rol != null && rol.trim().toLowerCase() == UsuarioRolBd.admin;
 
+  bool _esConductor(String? rol) =>
+      rol != null && rol.trim().toLowerCase() == UsuarioRolBd.coductor;
+
   Future<void> _irAlPanelAdmin() {
     return Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const AdminClinicaScreen()),
+      MaterialPageRoute<void>(builder: (_) => const AdminPanelScreen()),
+      (_) => false,
+    );
+  }
+
+  Future<void> _irAlPanelConductor() {
+    return Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const ConductorHomeScreen()),
       (_) => false,
     );
   }
@@ -82,6 +126,10 @@ class _LoginFormState extends State<_LoginForm> {
         final rol = SessionStore.instance.rol ?? res.rol;
         if (_esAdmin(rol)) {
           await _irAlPanelAdmin();
+          return;
+        }
+        if (_esConductor(rol)) {
+          await _irAlPanelConductor();
           return;
         }
         messenger.showSnackBar(
@@ -105,8 +153,7 @@ class _LoginFormState extends State<_LoginForm> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'No se pudo conectar al servidor. ¿Está el backend en '
-            'http://localhost:8080?\n$e',
+            'No se pudo conectar al servidor (${ApiConstants.baseUrl}).\n$e',
           ),
         ),
       );

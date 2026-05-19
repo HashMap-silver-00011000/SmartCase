@@ -33,14 +33,16 @@ class AuthApi {
     );
     final auth = AuthResponse.fromHttpResponse(response);
     if (auth.isSuccess) {
-      final rol = auth.rol ??
-          JwtSession.rolFromSessionCookie(_client.sessionCookie);
+      _client.absorbSessionFromResponse(
+        response,
+        tokenFromBody: auth.token,
+      );
+      final rol = auth.rol ?? JwtSession.rolFromSessionCookie(_client.sessionCookie);
       if (rol != null && rol.isNotEmpty) {
         SessionStore.instance.setRol(rol.trim());
       }
     } else {
       _client.clearSession();
-      SessionStore.instance.clear();
     }
     return auth;
   }

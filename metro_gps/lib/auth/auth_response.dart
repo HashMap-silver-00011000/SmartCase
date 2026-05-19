@@ -16,6 +16,17 @@ class AuthResponse {
 
   bool get isSuccess => statusCode >= 200 && statusCode < 300;
 
+  /// JWT de sesión (mismo valor que la cookie `smart_session`).
+  String? get token {
+    final data = jsonBody;
+    if (data == null) return null;
+    for (final key in ['token', 'Token', 'access_token', 'jwt']) {
+      final v = data[key];
+      if (v is String && v.isNotEmpty) return v.trim();
+    }
+    return null;
+  }
+
   /// Rol devuelto por el backend (`rol` o `Rol`).
   String? get rol {
     final data = jsonBody;

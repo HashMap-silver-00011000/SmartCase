@@ -60,3 +60,57 @@ func (h *ViajeHandler) CrearViaje(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"Mensaje": "Viaje Creado"})
 
 }
+
+func(h *ViajeHandler) ListarPorEstado(c *gin.Context){
+	var request RequestViaje
+
+	if err := c.ShouldBindJSON(&request) ; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H {"error" :  "Sintaxis Invalida"})
+	}
+
+	viaje := &models.Viaje{
+		EstadoViaje: request.EstadoViaje,
+	}
+
+	viajeEstado , err := h.s.ListarPorEstado(viaje)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H {"error" :  "Error al obtener estado"})
+	}
+
+	c.JSON(http.StatusOK, viajeEstado)
+}
+
+
+
+func (h *ViajeHandler) ListarPorUsuario(c *gin.Context) {
+	idRaw, ok := c.Get("id_usuario")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Sesion invalida"})
+		return
+	}
+
+	idStr, ok := idRaw.(string)
+	if !ok || idStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "ID de usuario no disponible"})
+		return
+	}
+
+	idUUID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID de usuario invalido"})
+		return
+	}
+
+	lista, err := h.s.ListarPorUsuario(idUUID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener viajes del conductor"})
+		return
+	}
+
+	respuesta := []models.Viaje{}
+	if lista != nil {
+		respuesta = *lista
+	}
+	c.JSON(http.StatusOK, respuesta)
+}
