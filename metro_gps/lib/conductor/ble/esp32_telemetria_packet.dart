@@ -36,15 +36,20 @@ class Esp32TelemetriaPacket {
 
   factory Esp32TelemetriaPacket.fromJson(Map<String, dynamic> json) {
     return Esp32TelemetriaPacket(
-      idBus: json['id_bus']?.toString(),
-      tInt: _num(json['t_int']),
-      tAmb: _num(json['t_amb']),
-      hum: _num(json['hum']),
+      // Se mantiene por si en el futuro decides volver a enviarlo desde el ESP32,
+      // por ahora quedará como null automáticamente.
+      idBus: json['id_bus']?.toString(), 
+      
+      // Mapeo actualizado a las nuevas llaves del JSON de Arduino
+      tInt: _num(json['temperatura_interna']),
+      tAmb: _num(json['temperatura_ambiente']),
+      hum: _num(json['humedad']),
       lux: _num(json['lux']),
-      acc: _num(json['acc']),
-      lat: _num(json['lat']),
-      lng: _num(json['long'] ?? json['lon'] ?? json['lng']),
-      alt: _num(json['alt']),
+      acc: _num(json['fuerza_g_impacto']),
+      lat: _num(json['latitud_actual']),
+      lng: _num(json['longitud_actual']),
+      alt: _num(json['altitud']),
+      
       recibidoEn: DateTime.now(),
     );
   }

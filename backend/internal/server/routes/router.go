@@ -22,17 +22,27 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 	// Configuración CORS estricta requerida para Sesiones/Cookies
 	r.Use(cors.New(cors.Config{
 		AllowOriginFunc: func(origin string) bool {
+			// 1. Acepta peticiones sin origen (Apps móviles nativas de Flutter)
 			if origin == "" {
 				return true
 			}
-			if origin == "http://localhost:3000" {
+
+			// 2. Acepta tus entornos de desarrollo web locales tradicionales
+			if origin == "http://localhost:3000" || strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:") {
 				return true
 			}
-			return strings.HasPrefix(origin, "http://localhost:") ||
-				strings.HasPrefix(origin, "http://127.0.0.1:")
+
+			// 3. NUEVO: Acepta cualquier origen que provenga de tu red local (192.168.X.X o 10.X.X.X)
+			// Esto es vital por si ejecutas Flutter Web desde el navegador del celular apuntando a la IP de tu PC
+			if strings.HasPrefix(origin, "http://192.168.") || strings.HasPrefix(origin, "http://10.") {
+				return true
+			}
+
+			return false
 		},
-		AllowMethods:     []string{"POST", "GET", "OPTIONS", "PUT", "DELETE"},
-		AllowHeaders:     []string{"Origin", "Content-Type"},
+		AllowMethods: []string{"POST", "GET", "OPTIONS", "PUT", "DELETE"},
+		// 4. AJUSTE CRÍTICO: Si usas autenticación o tokens personalizados, necesitas aceptar más cabeceras
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
@@ -84,7 +94,7 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 		panelAdmin := privadas.Group("/panel-admin")
 		panelAdmin.Use(middleware.RequiereAuth("admin"))
 		{
-			panelClinica := panelAdmin.Group("/clinica") 
+			panelClinica := panelAdmin.Group("/clinica")
 			{
 				panelClinica.POST("/crear", clinicaHandler.CrearClinica)
 				panelClinica.GET("/obtener", clinicaHandler.ObtenerClinica)
@@ -123,7 +133,7 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 			panelViaje := panelAdmin.Group("/viaje")
 			{
 				panelViaje.POST("/crear", viajeHandler.CrearViaje)
-				panelViaje.GET("viajes-estado",  viajeHandler.ListarPorEstado)
+				panelViaje.GET("viajes-estado", viajeHandler.ListarPorEstado)
 			}
 
 			panelUsuario := panelAdmin.Group("/usuario")
@@ -138,14 +148,13 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 		panelConductor.Use(middleware.RequiereAuth("coductor"))
 		{
 			//Viaje
-			panelViaje :=  panelConductor.Group("/Viaje")
+			panelViaje := panelConductor.Group("/Viaje")
 			{
 				panelViaje.GET("/tareas-viaje", viajeHandler.ListarPorUsuario)
 			}
 
 		}
 	}
-
 
 	// wsGroup := r.Group("/api/ws")
 	// wsGroup.Use(middleware.RequiereAuth())           // Debe estar logueado

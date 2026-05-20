@@ -1,12 +1,12 @@
-// #include <Wire.h>
-// #include <Adafruit_MPU6050.h>
-// #include <Adafruit_Sensor.h>
-// #include <BH1750.h>
-// #include <DHT.h>
-// #include <OneWire.h>
-// #include <DallasTemperature.h>
-// #include <TinyGPS++.h>
-// #include "BluetoothSerial.h"
+#include <Wire.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <BH1750.h>
+#include <DHT.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <TinyGPS++.h>
+#include "BluetoothSerial.h"
 
 // --- CONFIGURACIÓN DE PINES ---
 const int pinDS18B20 = 4;
@@ -79,27 +79,26 @@ void enviarJSON(float vibracion) {
   float tAmb = dht.readTemperature();
   float lux = lightMeter.readLightLevel();
 
-  // Construcción manual de la cadena JSON (con las llaves ajustadas para Go)
+  // Construcción manual de la cadena JSON
   String json = "{";
   
-  // Reemplaza esto por el ID UUID real del bus si tu frontend no lo añade
-  json += "\"id_bus\":\"123e4567-e89b-12d3-a456-426614174000\",";
-  
-  // Datos de los sensores
-  json += "\"t_int\":" + String(tAgua, 2) + ",";
-  json += "\"t_amb\":" + String(isnan(tAmb) ? 0 : tAmb, 2) + ",";
-  json += "\"hum\":" + String(isnan(h) ? 0 : h, 2) + ",";
-  json += "\"lux\":" + String(lux, 1) + ",";
-  json += "\"acc\":" + String(vibracion, 2) + ","; // Mandamos la vibración cruda
+  // Datos de temperatura, humedad, luz y aceleración
+  json += "\"temperatura_interna\":" + String(tAgua, 2) + ",";
+  json += "\"temperatura_ambiente\":" + String(isnan(tAmb) ? 0 : tAmb, 2) + ",";
+  json += "\"humedad\":" + String(isnan(h) ? 0 : h, 2) + ",";
+  json += "\"lux\":" + String(lux, 2) + ",";
+  json += "\"fuerza_g_impacto\":" + String(vibracion, 2) + ",";
   
   // Datos GPS
   if (gps.location.isValid()) {
-    json += "\"lat\":" + String(gps.location.lat(), 6) + ",";
-    json += "\"long\":" + String(gps.location.lng(), 6) + ",";
-    json += "\"alt\":" + String(gps.altitude.meters(), 1);
+    json += "\"latitud_actual\":" + String(gps.location.lat(), 6) + ",";
+    json += "\"longitud_actual\":" + String(gps.location.lng(), 6) + ",";
+    json += "\"altitud\":" + String(gps.altitude.meters(), 2);
   } else {
-    // Si no hay señal de satélite, enviamos ceros
-    json += "\"lat\":0.0,\"long\":0.0,\"alt\":0.0";
+    // Si no hay señal de satélite, enviamos ceros para mantener el formato numérico
+    json += "\"latitud_actual\":0.0,";
+    json += "\"longitud_actual\":0.0,";
+    json += "\"altitud\":0.0";
   }
   
   json += "}";

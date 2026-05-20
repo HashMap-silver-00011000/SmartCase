@@ -99,3 +99,11 @@ ADD COLUMN id_usuario_receptor UUID REFERENCES usuario(id_usuario);
 -- Después de actualizar los registros existentes:
 ALTER TABLE viaje
 ALTER COLUMN id_usuario_receptor SET NOT NULL;
+
+
+ALTER TABLE telemetria
+ADD COLUMN humedad DECIMAL(5,2),
+ADD COLUMN lux DECIMAL(10,2),
+ADD COLUMN altitud DECIMAL(8,2),
+ADD COLUMN registrado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN desde_bluetooth BOOLEAN DEFAULT TRUE;

@@ -5,6 +5,7 @@
 abstract final class ApiConstants {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:8080',
+    // Cambia localhost por la IP real de tu PC
+    defaultValue: 'http://192.168.56.1:8080', 
   );
 }
