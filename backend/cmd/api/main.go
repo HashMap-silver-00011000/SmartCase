@@ -5,9 +5,10 @@ import (
 	
 
 	"backend/config"
-	"backend/pkg/database"
+	"backend/internal/repository"
 	"backend/internal/server/routes"
 	"backend/internal/websockets"
+	"backend/pkg/database"
 )
 
 func main(){
@@ -20,7 +21,8 @@ func main(){
 	}
 	defer conexionDB.Close() // Asegura que la base de datos se cierre al apagar el servidor
 
-	hub := websockets.NewHub()
+	telemetriaRepo := repository.NewTelemetriaRepository(conexionDB)
+	hub := websockets.NewHub(telemetriaRepo)
 
 	go hub.Run()
 

@@ -2,6 +2,7 @@ class ViajeInput {
   const ViajeInput({
     required this.idCaja,
     required this.idUsuarioConductor,
+    required this.idUsuarioReceptor,
     required this.idSedeOrigen,
     required this.idSedeDestino,
     required this.idAmbulancia,
@@ -10,6 +11,7 @@ class ViajeInput {
 
   final String idCaja;
   final String idUsuarioConductor;
+  final String idUsuarioReceptor;
   final String idSedeOrigen;
   final String idSedeDestino;
   final String idAmbulancia;
@@ -25,6 +27,7 @@ class ViajeInput {
     final json = <String, dynamic>{
       'id_caja': idCaja,
       'id_usuario_conductor': idUsuarioConductor,
+      'id_usuario_receptor': idUsuarioReceptor,
       'id_sede_origen': idSedeOrigen,
       'id_sede_destino': idSedeDestino,
       'id_ambulancia': idAmbulancia,

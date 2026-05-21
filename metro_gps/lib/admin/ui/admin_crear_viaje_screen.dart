@@ -35,6 +35,7 @@ class _AdminCrearViajeScreenState extends State<AdminCrearViajeScreen> {
   List<Ambulancia> _ambulancias = [];
   List<SmartCase> _cajas = [];
   List<UsuarioConductor> _conductores = [];
+  List<UsuarioConductor> _receptores = [];
 
   Clinica? _clinicaOrigen;
   Clinica? _clinicaDestino;
@@ -43,6 +44,7 @@ class _AdminCrearViajeScreenState extends State<AdminCrearViajeScreen> {
   Ambulancia? _ambulancia;
   SmartCase? _caja;
   UsuarioConductor? _conductor;
+  UsuarioConductor? _receptor;
   String _estado = ViajeInput.estadosPermitidos.first;
 
   bool _cargando = true;
@@ -66,6 +68,7 @@ class _AdminCrearViajeScreenState extends State<AdminCrearViajeScreen> {
     final ambRes = await _ambulanciaApi.listar();
     final smartRes = await _smartApi.listar();
     final conductoresRes = await _usuarioApi.listarConductores();
+    final receptoresRes = await _usuarioApi.listarReceptores();
 
     if (!mounted) return;
 
@@ -82,6 +85,9 @@ class _AdminCrearViajeScreenState extends State<AdminCrearViajeScreen> {
     if (!conductoresRes.isSuccess) {
       errores.add(conductoresRes.errorMessage ?? 'Conductores');
     }
+    if (!receptoresRes.isSuccess) {
+      errores.add(receptoresRes.errorMessage ?? 'Receptores');
+    }
 
     if (!clinicasRes.isSuccess) {
       setState(() {
@@ -95,6 +101,7 @@ class _AdminCrearViajeScreenState extends State<AdminCrearViajeScreen> {
     final ambulancias = ambRes.data ?? [];
     final cajas = smartRes.data ?? [];
     final conductores = conductoresRes.data ?? [];
+    final receptores = receptoresRes.data ?? [];
 
     setState(() {
       _cargando = false;
@@ -105,11 +112,13 @@ class _AdminCrearViajeScreenState extends State<AdminCrearViajeScreen> {
       _ambulancias = ambulancias;
       _cajas = cajas;
       _conductores = conductores;
+      _receptores = receptores;
       _clinicaOrigen = clinicas.isNotEmpty ? clinicas.first : null;
       _clinicaDestino = clinicas.isNotEmpty ? clinicas.first : null;
       _ambulancia = ambulancias.isNotEmpty ? ambulancias.first : null;
       _caja = cajas.isNotEmpty ? cajas.first : null;
       _conductor = conductores.isNotEmpty ? conductores.first : null;
+      _receptor = receptores.isNotEmpty ? receptores.first : null;
     });
 
     await _cargarSedesOrigen();
@@ -157,10 +166,13 @@ class _AdminCrearViajeScreenState extends State<AdminCrearViajeScreen> {
         _sedeDestino == null ||
         _caja == null ||
         _ambulancia == null ||
-        _conductor == null) {
+        _conductor == null ||
+        _receptor == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Completa sedes, caja, ambulancia y conductor'),
+          content: Text(
+            'Completa sedes, caja, ambulancia, conductor y receptor',
+          ),
         ),
       );
       return;
@@ -180,6 +192,7 @@ class _AdminCrearViajeScreenState extends State<AdminCrearViajeScreen> {
       ViajeInput(
         idCaja: _caja!.idCaja,
         idUsuarioConductor: _conductor!.idUsuario,
+        idUsuarioReceptor: _receptor!.idUsuario,
         idSedeOrigen: _sedeOrigen!.idSede,
         idSedeDestino: _sedeDestino!.idSede,
         idAmbulancia: _ambulancia!.idAmbulancia,
@@ -404,6 +417,41 @@ class _AdminCrearViajeScreenState extends State<AdminCrearViajeScreen> {
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
                             'No hay conductores. Registra un usuario con rol coductor.',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<UsuarioConductor>(
+                        value: _receptor,
+                        decoration: const InputDecoration(
+                          labelText: 'Receptor (destino)',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: _receptores
+                            .map(
+                              (u) => DropdownMenuItem(
+                                value: u,
+                                child: Text(
+                                  u.nombreCompleto.isNotEmpty
+                                      ? u.nombreCompleto
+                                      : u.email,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: _enviando
+                            ? null
+                            : (u) => setState(() => _receptor = u),
+                        validator: (v) =>
+                            v == null ? 'Selecciona un receptor' : null,
+                      ),
+                      if (_receptores.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            'No hay receptores. Registra un usuario con rol receptor.',
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.error,
                             ),

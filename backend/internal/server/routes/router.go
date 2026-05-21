@@ -80,6 +80,10 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 	viajeService := service.NewViajeService(viajeRepo)
 	viajeHandler := handlers.NewViajeHandler(viajeService)
 
+	//Telemetria
+	telemetriaRepo := repository.NewTelemetriaRepository(db)
+	telemetriaHandler := handlers.NewTelemetriaHandler(telemetriaRepo)
+
 	// --- RUTAS PÚBLICAS (Login / Registro) ---
 	api := r.Group("/api")
 	{
@@ -133,12 +137,16 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 			panelViaje := panelAdmin.Group("/viaje")
 			{
 				panelViaje.POST("/crear", viajeHandler.CrearViaje)
-				panelViaje.GET("viajes-estado", viajeHandler.ListarPorEstado)
+				panelViaje.GET("/viajes-estado", viajeHandler.ListarPorEstado)
+				panelViaje.GET("/telemetria", telemetriaHandler.ListarPorViaje)
+				panelViaje.GET("/tareas-viaje-telemetria", handlers.WsHandler(hub))
 			}
+		
 
 			panelUsuario := panelAdmin.Group("/usuario")
 			{
 				panelUsuario.GET("/conductores/lista", usuarioHandler.ListarConductores)
+				panelUsuario.GET("/receptores/lista", usuarioHandler.ListarReceptores)
 			}
 		}
 
@@ -148,20 +156,34 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 		panelConductor.Use(middleware.RequiereAuth("coductor"))
 		{
 			//Viaje
-			panelViaje := panelConductor.Group("/Viaje")
+			panelViaje := panelConductor.Group("/viaje")
 			{
 				panelViaje.GET("/tareas-viaje", viajeHandler.ListarPorUsuario)
+				panelViaje.GET("/tareas-viaje-telemetria", handlers.WsHandler(hub))
 			}
 
 		}
+
+		//ZONA RECEPTORES
+
+		panelMedico := privadas.Group("/medico")
+		panelMedico.Use(middleware.RequiereAuth("receptor"))
+		{
+			//Viaje
+			panelViaje := panelMedico.Group("/viaje")
+			{
+				panelViaje.GET("/tareas-viaje", viajeHandler.ListarPorReceptor)
+				panelViaje.GET("/telemetria", telemetriaHandler.ListarPorViaje)
+				panelViaje.GET("/tareas-viaje-telemetria", handlers.WsHandler(hub))
+			}
+
+		}
+
+
 	}
 
-	// wsGroup := r.Group("/api/ws")
-	// wsGroup.Use(middleware.RequiereAuth())           // Debe estar logueado
-	// wsGroup.Use(middleware.RequiereRol("conductor")) // SOLO para conductores
-	// {
-	// 	wsGroup.GET("/telemetria", handlers.WsHandler(hub))
-	// }
-
+	
 	return r
+	
+
 }

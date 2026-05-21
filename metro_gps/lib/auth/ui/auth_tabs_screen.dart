@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../admin/clinica_api.dart';
 import '../../admin/ui/admin_panel_screen.dart';
 import '../../conductor/ui/conductor_home_screen.dart';
+import '../../receptor/ui/receptor_home_screen.dart';
 import '../../core/api_constants.dart';
 import '../../core/session_store.dart';
 import '../auth_api.dart';
@@ -30,6 +31,9 @@ class _AuthTabsScreenState extends State<AuthTabsScreen> {
   bool _esConductor(String? rol) =>
       rol != null && rol.trim().toLowerCase() == UsuarioRolBd.coductor;
 
+  bool _esReceptor(String? rol) =>
+      rol != null && rol.trim().toLowerCase() == UsuarioRolBd.receptor;
+
   void _abrirSiHaySesion() {
     if (!ClinicaApi.sharedClient.hasSession) return;
     final rol = SessionStore.instance.rol;
@@ -40,6 +44,10 @@ class _AuthTabsScreenState extends State<AuthTabsScreen> {
     } else if (_esConductor(rol)) {
       Navigator.of(context, rootNavigator: true).pushReplacement(
         MaterialPageRoute<void>(builder: (_) => const ConductorHomeScreen()),
+      );
+    } else if (_esReceptor(rol)) {
+      Navigator.of(context, rootNavigator: true).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => const ReceptorHomeScreen()),
       );
     }
   }
@@ -98,6 +106,9 @@ class _LoginFormState extends State<_LoginForm> {
   bool _esConductor(String? rol) =>
       rol != null && rol.trim().toLowerCase() == UsuarioRolBd.coductor;
 
+  bool _esReceptor(String? rol) =>
+      rol != null && rol.trim().toLowerCase() == UsuarioRolBd.receptor;
+
   Future<void> _irAlPanelAdmin() {
     return Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const AdminPanelScreen()),
@@ -108,6 +119,13 @@ class _LoginFormState extends State<_LoginForm> {
   Future<void> _irAlPanelConductor() {
     return Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const ConductorHomeScreen()),
+      (_) => false,
+    );
+  }
+
+  Future<void> _irAlPanelReceptor() {
+    return Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const ReceptorHomeScreen()),
       (_) => false,
     );
   }
@@ -130,6 +148,10 @@ class _LoginFormState extends State<_LoginForm> {
         }
         if (_esConductor(rol)) {
           await _irAlPanelConductor();
+          return;
+        }
+        if (_esReceptor(rol)) {
+          await _irAlPanelReceptor();
           return;
         }
         messenger.showSnackBar(

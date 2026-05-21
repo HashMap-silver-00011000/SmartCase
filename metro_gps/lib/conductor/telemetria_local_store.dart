@@ -15,12 +15,40 @@ class TelemetriaLocalStore {
     return List.unmodifiable(_porViaje[idViaje] ?? const []);
   }
 
+  List<TelemetriaRegistro> listarPendientes(String idViaje) {
+    return listar(idViaje).where((r) => !r.enviadoAlServidor).toList();
+  }
+
+  void marcarEnviado(String idViaje, String idTelemetria) {
+    final lista = _porViaje[idViaje];
+    if (lista == null) return;
+    for (var i = 0; i < lista.length; i++) {
+      if (lista[i].idTelemetria == idTelemetria) {
+        lista[i] = lista[i].copyWith(enviadoAlServidor: true);
+        return;
+      }
+    }
+  }
+
+  void fusionarHistorial(String idViaje, List<TelemetriaRegistro> remotos) {
+    if (remotos.isEmpty) return;
+    final local = _porViaje.putIfAbsent(idViaje, () => []);
+    final ids = local.map((e) => e.idTelemetria).toSet();
+    for (final r in remotos) {
+      if (!ids.contains(r.idTelemetria)) {
+        local.add(r);
+        ids.add(r.idTelemetria);
+      }
+    }
+    local.sort((a, b) => a.registradoEn.compareTo(b.registradoEn));
+  }
+
   TelemetriaRegistro agregar({
     required String idViaje,
     required TelemetriaInput input,
   }) {
     final registro = TelemetriaRegistro(
-      idTelemetria: _uuid.v4(),
+      idTelemetria: input.idTelemetria ?? _uuid.v4(),
       idViaje: idViaje,
       temperaturaInterna: input.temperaturaInterna,
       latitud: input.latitud,
@@ -37,5 +65,17 @@ class TelemetriaLocalStore {
     );
     _porViaje.putIfAbsent(idViaje, () => []).add(registro);
     return registro;
+  }
+
+  /// Devuelve el registro más reciente NO enviado aún, o null si no hay.
+  /// El sync service lo usa para enviar la lectura "en vivo" al WebSocket.
+  TelemetriaRegistro? lecturaVivo(String idViaje) {
+    final lista = _porViaje[idViaje];
+    if (lista == null || lista.isEmpty) return null;
+    // Busca desde el final (más reciente) el primer pendiente
+    for (var i = lista.length - 1; i >= 0; i--) {
+      if (!lista[i].enviadoAlServidor) return lista[i];
+    }
+    return null;
   }
 }

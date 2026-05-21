@@ -23,11 +23,12 @@ class UsuarioApi {
 
   final ApiClient _client;
 
-  Future<UsuarioApiResult<List<UsuarioConductor>>> listarConductores() async {
+  Future<UsuarioApiResult<List<UsuarioConductor>>> _listarPorRol(
+    String path,
+    String errorMsg,
+  ) async {
     try {
-      final response = await _client.get(
-        '/api/app/panel-admin/usuario/conductores/lista',
-      );
+      final response = await _client.get(path);
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final decoded = jsonDecode(response.body);
         if (decoded is List) {
@@ -49,7 +50,7 @@ class UsuarioApi {
       }
       return UsuarioApiResult(
         statusCode: response.statusCode,
-        errorMessage: 'No se pudo cargar la lista de conductores',
+        errorMessage: errorMsg,
       );
     } catch (e) {
       return UsuarioApiResult(
@@ -57,5 +58,19 @@ class UsuarioApi {
         errorMessage: 'Error de conexión: $e',
       );
     }
+  }
+
+  Future<UsuarioApiResult<List<UsuarioConductor>>> listarConductores() async {
+    return _listarPorRol(
+      '/api/app/panel-admin/usuario/conductores/lista',
+      'No se pudo cargar la lista de conductores',
+    );
+  }
+
+  Future<UsuarioApiResult<List<UsuarioConductor>>> listarReceptores() async {
+    return _listarPorRol(
+      '/api/app/panel-admin/usuario/receptores/lista',
+      'No se pudo cargar la lista de receptores',
+    );
   }
 }

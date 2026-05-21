@@ -11,6 +11,7 @@ type Viaje struct {
 	IDViaje            uuid.UUID       `db:"id_viaje" json:"id_viaje"`
 	IDCaja             uuid.UUID       `db:"id_caja" json:"id_caja"`
 	IDUsuarioConductor uuid.UUID       `db:"id_usuario_conductor" json:"id_usuario_conductor"`
+	IDUsuarioReceptor uuid.UUID       `db:"id_usuario_receptor" json:"id_usuario_receptor"`
 	IDSedeOrigen       uuid.UUID       `db:"id_sede_origen" json:"id_sede_origen"`
 	IDSedeDestino      uuid.UUID       `db:"id_sede_destino" json:"id_sede_destino"`
 	IDAmbulancia       uuid.UUID       `db:"id_ambulancia" json:"id_ambulancia"`

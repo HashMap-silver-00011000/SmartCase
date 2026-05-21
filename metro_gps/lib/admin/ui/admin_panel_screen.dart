@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../auth/logout_action.dart';
 import 'admin_ambulancia_screen.dart';
 import 'admin_clinica_screen.dart';
 import 'admin_crear_viaje_screen.dart';
+import 'admin_viajes_screen.dart';
 import 'admin_smartcase_screen.dart';
 import 'admin_sede_screen.dart';
 
@@ -14,6 +16,7 @@ class AdminPanelScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Panel administrador'),
+        actions: const [LogoutAppBarButton()],
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -55,6 +58,16 @@ class AdminPanelScreen extends StatelessWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => const AdminSmartCaseScreen(),
+              ),
+            ),
+          ),
+          _AdminMenuTile(
+            icon: Icons.monitor_heart_outlined,
+            title: 'Ver telemetría',
+            subtitle: 'Viajes en tránsito y datos en vivo',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const AdminViajesScreen(),
               ),
             ),
           ),

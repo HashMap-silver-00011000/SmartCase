@@ -42,7 +42,7 @@ class AuthApi {
         SessionStore.instance.setRol(rol.trim());
       }
     } else {
-      _client.clearSession();
+      await _client.clearSession();
     }
     return auth;
   }

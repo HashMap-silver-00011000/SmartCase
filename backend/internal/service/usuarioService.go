@@ -18,7 +18,6 @@ func NewUsuarioService (r *repository.UsuarioRepository) *UsuarioService {
 }
 
 func (s *UsuarioService) NuevoUsuario(usuario *models.Usuario) error {
-
 	err := s.r.CrearUsuario(usuario)
 	return  err
 
@@ -26,6 +25,10 @@ func (s *UsuarioService) NuevoUsuario(usuario *models.Usuario) error {
 
 func (s *UsuarioService) ListarConductores() (*[]models.Usuario, error) {
 	return s.r.ListarPorRol("coductor")
+}
+
+func (s *UsuarioService) ListarReceptores() (*[]models.Usuario, error) {
+	return s.r.ListarPorRol("receptor")
 }
 
 func (s *UsuarioService) Autenticar(usuarioE *models.Usuario) (*models.Usuario, error) {

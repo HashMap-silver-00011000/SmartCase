@@ -2,82 +2,67 @@ package websockets
 
 import (
 	"backend/internal/models"
+	"backend/internal/repository"
 	"encoding/json"
 	"log"
+	"time"
 
-	"github.com/shopspring/decimal"
+	"github.com/google/uuid"
 )
 
 type Hub struct {
-
-	Broadcast chan models.Telemetria
-
+	Broadcast  chan models.Telemetria
 	Unregister chan *Client
-
-	Register chan *Client
-
-	Clients map[*Client]bool
-
+	Register   chan *Client
+	Clients    map[*Client]bool
+	telemetria *repository.TelemetriaRepository
 }
 
-func NewHub() *Hub {
+func NewHub(telemetriaRepo *repository.TelemetriaRepository) *Hub {
 	return &Hub{
 		Broadcast:  make(chan models.Telemetria),
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
 		Clients:    make(map[*Client]bool),
+		telemetria: telemetriaRepo,
 	}
 }
 
 func (h *Hub) Run() {
-    for {
-        select {
-        case client := <-h.Register:
-            h.Clients[client] = true
-            
-        case client := <-h.Unregister:
-            if _, ok := h.Clients[client]; ok {
-                delete(h.Clients, client)
-                close(client.send) // Destruye el writePump de ese cliente
-            }
-            
-        // BLOQUE DE TELEMETRÍA
-        case telemetria := <-h.Broadcast:
-            
-            // ---------------------------------------------------------
-            //Umbral Temperatura Ambiente
-            // umbralTemperatura := decimal.NewFromFloat(38.0)
-            // if telemetria.TempAmbiente .GreaterThan(umbralTemperatura) {
-            //     log.Println("¡ALERTA TÉRMICA DETECTADA!")
-            // }
-            // ---------------------------------------------------------
-            //Umbral Temperatura Interna
-            umbralTemperaturaInterna := decimal.NewFromFloat(20.0)
-            if telemetria.TemperaturaInterna.GreaterThan(umbralTemperaturaInterna) {
-                log.Println("¡ALERTA TÉRMICA INTERNA DETECTADA!")
-            }
+	for {
+		select {
+		case client := <-h.Register:
+			h.Clients[client] = true
 
-            // ---------------------------------------------------------
-            //Umbral gOLPE 
-            umbralGolpe := decimal.NewFromFloat(28.0)
-            if telemetria.FuerzaGImpacto.GreaterThan(umbralGolpe) {
-                log.Println("Golpe")
-            }
+		case client := <-h.Unregister:
+			if _, ok := h.Clients[client]; ok {
+				delete(h.Clients, client)
+				close(client.send)
+			}
 
+		case telemetria := <-h.Broadcast:
+			h.prepareTelemetria(&telemetria)
 
-            // ---------------------------------------------------------
-            // PREPARACIÓN PARA RED (Marshal)
-            // ---------------------------------------------------------
+			if h.telemetria != nil {
+				if err := h.telemetria.GuardarTelemetria(&telemetria); err != nil {
+					log.Println("Error guardando telemetría en BD:", err)
+					continue
+				}
+			}
 
-            mensajeBytes, err := json.Marshal(telemetria)
-            if err != nil {
-                log.Println("Error serializando telemetría:", err)
-                continue // Ignora el error y sigue esperando el próximo dato
-            }
+			mensajeBytes, err := json.Marshal(telemetria)
+			if err != nil {
+				log.Println("Error serializando telemetría:", err)
+				continue
+			}
 
-            // ---------------------------------------------------------
-            // Repartimos el JSON en bytes a todos los clientes conectados.
 			for client := range h.Clients {
+				if client.ViajeID != telemetria.IDViaje.String() {
+					continue
+				}
+				if client.Rol == "coductor" {
+					continue
+				}
 				select {
 				case client.send <- mensajeBytes:
 				default:
@@ -86,5 +71,14 @@ func (h *Hub) Run() {
 				}
 			}
 		}
+	}
+}
+
+func (h *Hub) prepareTelemetria(t *models.Telemetria) {
+	if t.IDTelemetria == uuid.Nil {
+		t.IDTelemetria = uuid.New()
+	}
+	if t.RegistradoEn.IsZero() {
+		t.RegistradoEn = time.Now().UTC()
 	}
 }

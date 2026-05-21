@@ -7,6 +7,7 @@ import '../ble/esp32_telemetria_packet.dart';
 import '../models/telemetria.dart';
 import '../models/viaje.dart';
 import '../telemetria_local_store.dart';
+import '../telemetria_sync_service.dart';
 
 class ConductorViajeDetalleScreen extends StatefulWidget {
   const ConductorViajeDetalleScreen({super.key, required this.viaje});
@@ -22,24 +23,38 @@ class _ConductorViajeDetalleScreenState
     extends State<ConductorViajeDetalleScreen> {
   final _store = TelemetriaLocalStore.instance;
   final _bt = Esp32BluetoothService.instance;
+  late final TelemetriaSyncService _sync;
 
   late List<TelemetriaRegistro> _registros;
   StreamSubscription<Esp32TelemetriaPacket>? _packetSub;
   bool _autoGuardar = true;
   bool _conectando = false;
+  String _estadoEnvio = 'Iniciando envío al servidor…';
 
   @override
   void initState() {
     super.initState();
+    _sync = TelemetriaSyncService(idViaje: widget.viaje.idViaje);
     _registros = _store.listar(widget.viaje.idViaje);
     _bt.addListener(_onBtChanged);
     _packetSub = _bt.packets.listen(_onPacket);
+    _iniciarSync();
+  }
+
+  Future<void> _iniciarSync() async {
+    try {
+      await _sync.start();
+      if (mounted) setState(() => _estadoEnvio = 'Enviando cada 5 s (WebSocket)');
+    } catch (e) {
+      if (mounted) setState(() => _estadoEnvio = 'Error WS: $e');
+    }
   }
 
   @override
   void dispose() {
     _packetSub?.cancel();
     _bt.removeListener(_onBtChanged);
+    _sync.stop();
     super.dispose();
   }
 
