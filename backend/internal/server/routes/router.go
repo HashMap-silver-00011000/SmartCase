@@ -153,7 +153,7 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 		//ZONA CONDUCTORES
 
 		panelConductor := privadas.Group("/conductor")
-		panelConductor.Use(middleware.RequiereAuth("coductor"))
+		panelConductor.Use(middleware.RequiereAuth("conductor"))
 		{
 			//Viaje
 			panelViaje := panelConductor.Group("/viaje")
