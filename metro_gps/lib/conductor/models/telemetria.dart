@@ -31,21 +31,76 @@ class TelemetriaRegistro {
   final double? lux;
   final double? altitud;
 
-  // Actualizado para enviar los nuevos sensores hacia tu backend en Go
-  Map<String, dynamic> toBackendJson() => {
+  Map<String, dynamic> toBackendJson() => toWsJson();
+
+  /// Payload JSON para WebSocket (modelo Go `Telemetria`).
+  Map<String, dynamic> toWsJson() => {
+        'id_telemetria': idTelemetria,
         'id_viaje': idViaje,
         'temperatura_interna': temperaturaInterna,
+        'temperatura_ambiente': tempAmbiente ?? 0,
+        'humedad': humedad ?? 0,
+        'lux': lux ?? 0,
         'latitud_actual': latitud,
         'longitud_actual': longitud,
+        'altitud': altitud ?? 0,
         'fuerza_g_impacto': fuerzaG,
-        'temperatura_ambiente': tempAmbiente,
-        'humedad': humedad,
-        'lux': lux,
-        'altitud': altitud,
-        'desde_bluetooth': desdeBluetooth,
         if (alertaGenerada != null && alertaGenerada!.isNotEmpty)
           'alerta_generada': alertaGenerada,
+        'registrado_en': registradoEn.toUtc().toIso8601String(),
+        'desde_bluetooth': desdeBluetooth,
       };
+
+  factory TelemetriaRegistro.fromJson(Map<String, dynamic> json) {
+    double toDouble(dynamic v) {
+      if (v == null) return 0;
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString()) ?? 0;
+    }
+
+    DateTime parseDate(dynamic v) {
+      if (v == null) return DateTime.now();
+      return DateTime.tryParse(v.toString()) ?? DateTime.now();
+    }
+
+    return TelemetriaRegistro(
+      idTelemetria: json['id_telemetria']?.toString() ?? '',
+      idViaje: json['id_viaje']?.toString() ?? '',
+      temperaturaInterna: toDouble(json['temperatura_interna']),
+      latitud: toDouble(json['latitud_actual']),
+      longitud: toDouble(json['longitud_actual']),
+      fuerzaG: toDouble(json['fuerza_g_impacto']),
+      registradoEn: parseDate(json['registrado_en']),
+      alertaGenerada: json['alerta_generada']?.toString(),
+      enviadoAlServidor: true,
+      desdeBluetooth: json['desde_bluetooth'] == true,
+      tempAmbiente: json['temperatura_ambiente'] != null
+          ? toDouble(json['temperatura_ambiente'])
+          : null,
+      humedad:
+          json['humedad'] != null ? toDouble(json['humedad']) : null,
+      lux: json['lux'] != null ? toDouble(json['lux']) : null,
+      altitud:
+          json['altitud'] != null ? toDouble(json['altitud']) : null,
+    );
+  }
+
+  TelemetriaRegistro copyWith({bool? enviadoAlServidor}) => TelemetriaRegistro(
+        idTelemetria: idTelemetria,
+        idViaje: idViaje,
+        temperaturaInterna: temperaturaInterna,
+        latitud: latitud,
+        longitud: longitud,
+        fuerzaG: fuerzaG,
+        registradoEn: registradoEn,
+        alertaGenerada: alertaGenerada,
+        enviadoAlServidor: enviadoAlServidor ?? this.enviadoAlServidor,
+        desdeBluetooth: desdeBluetooth,
+        tempAmbiente: tempAmbiente,
+        humedad: humedad,
+        lux: lux,
+        altitud: altitud,
+      );
 }
 
 class TelemetriaInput {
@@ -54,6 +109,7 @@ class TelemetriaInput {
     required this.latitud,
     required this.longitud,
     required this.fuerzaG,
+    this.idTelemetria,
     this.alertaGenerada,
     this.desdeBluetooth = false,
     this.tempAmbiente,
@@ -62,6 +118,7 @@ class TelemetriaInput {
     this.altitud,
   });
 
+  final String? idTelemetria;
   final double temperaturaInterna;
   final double latitud;
   final double longitud;
@@ -72,21 +129,4 @@ class TelemetriaInput {
   final double? humedad;
   final double? lux;
   final double? altitud;
-
-  // --- FACTORY AÑADIDO PARA PARSEAR EL JSON DEL ESP32 ---
-  factory TelemetriaInput.fromJson(Map<String, dynamic> json) {
-    // Usamos (json['clave'] as num?)?.toDouble() para garantizar que si el ESP32 
-    // envía un entero (ej. 0 en vez de 0.0), Dart no lance una excepción de casteo.
-    return TelemetriaInput(
-      temperaturaInterna: (json['temperatura_interna'] as num?)?.toDouble() ?? 0.0,
-      latitud: (json['latitud_actual'] as num?)?.toDouble() ?? 0.0,
-      longitud: (json['longitud_actual'] as num?)?.toDouble() ?? 0.0,
-      fuerzaG: (json['fuerza_g_impacto'] as num?)?.toDouble() ?? 0.0,
-      tempAmbiente: (json['temperatura_ambiente'] as num?)?.toDouble() ?? 0.0,
-      humedad: (json['humedad'] as num?)?.toDouble() ?? 0.0,
-      lux: (json['lux'] as num?)?.toDouble() ?? 0.0,
-      altitud: (json['altitud'] as num?)?.toDouble() ?? 0.0,
-      desdeBluetooth: true, 
-    );
-  }
 }

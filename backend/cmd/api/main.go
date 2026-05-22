@@ -5,27 +5,28 @@ import (
 	
 
 	"backend/config"
-	"backend/pkg/database"
+	"backend/internal/repository"
 	"backend/internal/server/routes"
 	"backend/internal/websockets"
+
 )
 
 func main(){
 	
-	cfg := config.LoadConfig()
+	cfg, err := config.LoadConfigNeon()
 
-	conexionDB, err := database.ConectarDB(cfg)
 	if err != nil {
 		log.Fatalf("Error fatal: No se pudo conectar a PostgreSQL: %v", err)
 	}
-	defer conexionDB.Close() // Asegura que la base de datos se cierre al apagar el servidor
+	defer cfg.Close() // Asegura que la base de datos se cierre al apagar el servidor
 
-	hub := websockets.NewHub()
+	telemetriaRepo := repository.NewTelemetriaRepository(cfg)
+	hub := websockets.NewHub(telemetriaRepo)
 
 	go hub.Run()
 
 	// 3. Configurar el Enrutador
-	router := routes.ConfigurarRutas(conexionDB,hub)
+	router := routes.ConfigurarRutas(cfg,hub)
 
 	// 4. Encender el servidor
 	log.Println("Servidor operando en el puerto 8080...")

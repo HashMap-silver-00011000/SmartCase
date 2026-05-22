@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -23,6 +25,8 @@ class Esp32BluetoothService extends ChangeNotifier {
   String? statusMessage;
   Esp32TelemetriaPacket? lastPacket;
   String? lastError;
+  int bytesRecibidos = 0;
+  int lineasProcesadas = 0;
 
   final _packetController = StreamController<Esp32TelemetriaPacket>.broadcast();
   Stream<Esp32TelemetriaPacket> get packets => _packetController.stream;
@@ -104,14 +108,26 @@ class Esp32BluetoothService extends ChangeNotifier {
       final connection = await BluetoothConnection.toAddress(device.address);
       _connection = connection;
       _lineBuffer = '';
+      bytesRecibidos = 0;
+      lineasProcesadas = 0;
 
-      _inputSub = _connection!.input!.listen(
+      final input = _connection!.input;
+      if (input == null) {
+        lastError = 'El socket Bluetooth no expuso canal de lectura';
+        statusMessage = lastError;
+        await _cleanupConnection();
+        notifyListeners();
+        return;
+      }
+
+      _inputSub = input.listen(
         _onData,
         onDone: _handleDisconnect,
         onError: (Object e) {
           lastError = e.toString();
           _handleDisconnect();
         },
+        cancelOnError: false,
       );
 
       statusMessage = 'Conectado a ${device.name ?? device.address}';
@@ -173,11 +189,32 @@ class Esp32BluetoothService extends ChangeNotifier {
   }
 
   void _onData(Uint8List data) {
+    bytesRecibidos += data.length;
     _lineBuffer += utf8.decode(data, allowMalformed: true);
-    final parts = _lineBuffer.split(RegExp(r'\r?\n'));
-    _lineBuffer = parts.removeLast();
-    for (final raw in parts) {
-      _processLine(raw.trim());
+    _drainBuffer();
+    notifyListeners();
+  }
+
+  void _drainBuffer() {
+    while (true) {
+      final nl = _lineBuffer.indexOf('\n');
+      if (nl >= 0) {
+        final line = _lineBuffer.substring(0, nl).replaceAll('\r', '').trim();
+        _lineBuffer = _lineBuffer.substring(nl + 1);
+        if (line.isNotEmpty) _processLine(line);
+        continue;
+      }
+
+      final start = _lineBuffer.indexOf('{');
+      final end = _lineBuffer.lastIndexOf('}');
+      if (start >= 0 && end > start) {
+        final jsonLine = _lineBuffer.substring(start, end + 1);
+        if (_tryParseAndEmit(jsonLine)) {
+          _lineBuffer = _lineBuffer.substring(end + 1);
+          continue;
+        }
+      }
+      break;
     }
   }
 
@@ -185,16 +222,22 @@ class Esp32BluetoothService extends ChangeNotifier {
     if (line.isEmpty) return;
     final start = line.indexOf('{');
     if (start < 0) return;
-    final jsonLine = line.substring(start);
+    _tryParseAndEmit(line.substring(start));
+  }
+
+  bool _tryParseAndEmit(String jsonLine) {
     try {
       final packet = Esp32TelemetriaPacket.fromJsonLine(jsonLine);
       lastPacket = packet;
       lastError = null;
+      lineasProcesadas++;
       _packetController.add(packet);
       notifyListeners();
+      return true;
     } catch (e) {
-      lastError = 'Línea no válida: $e';
+      lastError = 'JSON inválido: $e · $jsonLine';
       notifyListeners();
+      return false;
     }
   }
 

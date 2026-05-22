@@ -21,5 +21,22 @@ func (h *UsuarioHandler) ListarConductores(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener conductores"})
 		return
 	}
+	if lista == nil {
+		c.JSON(http.StatusOK, []interface{}{})
+		return
+	}
+	c.JSON(http.StatusOK, lista)
+}
+
+func (h *UsuarioHandler) ListarReceptores(c *gin.Context) {
+	lista, err := h.s.ListarReceptores()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener receptores"})
+		return
+	}
+	if lista == nil {
+		c.JSON(http.StatusOK, []interface{}{})
+		return
+	}
 	c.JSON(http.StatusOK, lista)
 }

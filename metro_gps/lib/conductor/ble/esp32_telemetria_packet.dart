@@ -3,6 +3,12 @@ import 'dart:convert';
 import '../models/telemetria.dart';
 
 /// Lectura en vivo enviada por el ESP32 por Bluetooth clásico (SerialBT.println).
+///
+/// Soporta el JSON actual del firmware:
+/// `temperatura_interna`, `temperatura_ambiente`, `humedad`, `lux`,
+/// `fuerza_g_impacto`, `latitud_actual`, `longitud_actual`, `altitud`
+///
+/// y el formato anterior (`t_int`, `t_amb`, `acc`, `lat`, `long`, …).
 class Esp32TelemetriaPacket {
   const Esp32TelemetriaPacket({
     this.idBus,
@@ -34,22 +40,24 @@ class Esp32TelemetriaPacket {
     return double.tryParse(v.toString()) ?? 0;
   }
 
+  static double _firstNum(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      if (json.containsKey(key)) return _num(json[key]);
+    }
+    return 0;
+  }
+
   factory Esp32TelemetriaPacket.fromJson(Map<String, dynamic> json) {
     return Esp32TelemetriaPacket(
-      // Se mantiene por si en el futuro decides volver a enviarlo desde el ESP32,
-      // por ahora quedará como null automáticamente.
-      idBus: json['id_bus']?.toString(), 
-      
-      // Mapeo actualizado a las nuevas llaves del JSON de Arduino
-      tInt: _num(json['temperatura_interna']),
-      tAmb: _num(json['temperatura_ambiente']),
-      hum: _num(json['humedad']),
+      idBus: json['id_bus']?.toString(),
+      tInt: _firstNum(json, ['temperatura_interna', 't_int']),
+      tAmb: _firstNum(json, ['temperatura_ambiente', 't_amb']),
+      hum: _firstNum(json, ['humedad', 'hum']),
       lux: _num(json['lux']),
-      acc: _num(json['fuerza_g_impacto']),
-      lat: _num(json['latitud_actual']),
-      lng: _num(json['longitud_actual']),
-      alt: _num(json['altitud']),
-      
+      acc: _firstNum(json, ['fuerza_g_impacto', 'acc']),
+      lat: _firstNum(json, ['latitud_actual', 'lat']),
+      lng: _firstNum(json, ['longitud_actual', 'long', 'lon', 'lng']),
+      alt: _num(json['altitud'] ?? json['alt']),
       recibidoEn: DateTime.now(),
     );
   }
@@ -66,7 +74,8 @@ class Esp32TelemetriaPacket {
     return null;
   }
 
-  TelemetriaInput toTelemetriaInput() => TelemetriaInput(
+  TelemetriaInput toTelemetriaInput({String? idTelemetria}) => TelemetriaInput(
+        idTelemetria: idTelemetria,
         temperaturaInterna: tInt,
         latitud: lat,
         longitud: lng,

@@ -24,8 +24,8 @@ func NewViajeCaseRepository(db *sqlx.DB) *ViajeRepository{
 
 func (r *ViajeRepository) CrearViaje(viaje *models.Viaje) error {
 
-	_, err := r.db.NamedExec(`INSERT INTO viaje (id_viaje, id_caja, id_usuario_conductor, id_sede_origen, id_sede_destino, id_ambulancia,
-                                              fecha_inicio, fecha_llegada, estado_viaje) VALUES (:id_viaje, :id_caja, :id_usuario_conductor, :id_sede_origen, :id_sede_destino, :id_ambulancia,
+	_, err := r.db.NamedExec(`INSERT INTO viaje (id_viaje, id_caja, id_usuario_conductor, id_usuario_receptor, id_sede_origen, id_sede_destino, id_ambulancia,
+                                              fecha_inicio, fecha_llegada, estado_viaje) VALUES (:id_viaje, :id_caja, :id_usuario_conductor, :id_usuario_receptor, :id_sede_origen, :id_sede_destino, :id_ambulancia,
                                               :fecha_inicio, :fecha_llegada, :estado_viaje)`, viaje)
 
     log.Printf("Error creating viaje: %v", err)
@@ -53,9 +53,9 @@ func (r *ViajeRepository) ListarPorEstado(viaje *models.Viaje)(*[]models.Viaje, 
 
 	var listaViaje []models.Viaje
 
-	err := r.db.Select(&listaViaje, `SELECT id_viaje, id_caja, id_usuario_conductor, id_sede_origen, id_sede_destino, id_ambulancia,
-                                              fecha_inicio, fecha_llegada
-									FROM viaje WHERE estado_viaje = $1 ORDER BY id_viaje`,viaje.EstadoViaje)
+	err := r.db.Select(&listaViaje, `SELECT id_viaje, id_caja, id_usuario_conductor, id_usuario_receptor, id_sede_origen, id_sede_destino, id_ambulancia,
+                                              fecha_inicio, fecha_llegada, estado_viaje
+									FROM viaje WHERE estado_viaje = $1 ORDER BY fecha_inicio DESC`, viaje.EstadoViaje)
 
 	if err != nil {
 		log.Printf("Error en la consulta: %v", err)
@@ -69,7 +69,7 @@ func (r *ViajeRepository) ListarPorUsuario(id_usuario_conductor uuid.UUID)(*[]mo
 
 	var listaViaje []models.Viaje
 
-	err := r.db.Select(&listaViaje, `SELECT id_viaje, id_caja, id_usuario_conductor, id_sede_origen, id_sede_destino, id_ambulancia,
+	err := r.db.Select(&listaViaje, `SELECT id_viaje, id_caja, id_usuario_conductor, id_usuario_receptor, id_sede_origen, id_sede_destino, id_ambulancia,
                                               fecha_inicio, fecha_llegada, estado_viaje
 									FROM viaje WHERE id_usuario_conductor = $1 ORDER BY fecha_inicio DESC`, id_usuario_conductor)
 
@@ -81,6 +81,18 @@ func (r *ViajeRepository) ListarPorUsuario(id_usuario_conductor uuid.UUID)(*[]mo
 	return &listaViaje, nil
 }
 
+func (r *ViajeRepository) ListarPorReceptor(idUsuarioReceptor uuid.UUID) (*[]models.Viaje, error) {
+	var listaViaje []models.Viaje
 
+	err := r.db.Select(&listaViaje, `SELECT id_viaje, id_caja, id_usuario_conductor, id_usuario_receptor, id_sede_origen, id_sede_destino, id_ambulancia,
+                                              fecha_inicio, fecha_llegada, estado_viaje
+									FROM viaje WHERE id_usuario_receptor = $1 ORDER BY fecha_inicio DESC`, idUsuarioReceptor)
 
-    
+	if err != nil {
+		log.Printf("Error en la consulta receptor: %v", err)
+		return nil, err
+	}
+
+	return &listaViaje, nil
+}
+

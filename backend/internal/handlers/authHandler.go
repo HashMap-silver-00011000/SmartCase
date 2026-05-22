@@ -3,6 +3,7 @@ package handlers
 import (
 	"backend/internal/models"
 	"backend/internal/service"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -42,6 +43,8 @@ func (h *AuthHandler) Registro(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error ": "JSON invalido"})
 		return
 	}
+
+	log.Printf("%+v", registroIput)
 
 	HashPassword, bad := bcrypt.GenerateFromPassword([]byte(registroIput.Password), bcrypt.DefaultCost)
 	

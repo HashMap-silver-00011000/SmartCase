@@ -43,6 +43,7 @@ dependencies:
   permission_handler: ^11.4.0
   flutter_bluetooth_serial: ^0.4.0
   shared_preferences: ^2.5.5
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   flutter_test:

@@ -51,3 +51,12 @@ func (s *ViajeService) ListarPorUsuario(id_usuario_conductor uuid.UUID) (*[]mode
 
 	return listaViaje, nil
 }
+
+func (s *ViajeService) ListarPorReceptor(idUsuarioReceptor uuid.UUID) (*[]models.Viaje, error) {
+	listaViaje, err := s.r.ListarPorReceptor(idUsuarioReceptor)
+	if err != nil {
+		log.Printf("Error en service receptor: %v", err)
+		return nil, err
+	}
+	return listaViaje, nil
+}

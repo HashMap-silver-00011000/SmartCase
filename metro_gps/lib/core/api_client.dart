@@ -57,9 +57,9 @@ class ApiClient {
     _syncSessionStoreFromToken(token);
   }
 
-  void clearSession() {
+  Future<void> clearSession() async {
     _sessionCookie = null;
-    SessionPersistence.clear();
+    await SessionPersistence.clear();
     SessionStore.instance.clear();
   }
 

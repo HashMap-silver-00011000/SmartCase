@@ -3,6 +3,7 @@ class Viaje {
     required this.idViaje,
     required this.idCaja,
     required this.idUsuarioConductor,
+    this.idUsuarioReceptor,
     required this.idSedeOrigen,
     required this.idSedeDestino,
     required this.idAmbulancia,
@@ -14,6 +15,7 @@ class Viaje {
   final String idViaje;
   final String idCaja;
   final String idUsuarioConductor;
+  final String? idUsuarioReceptor;
   final String idSedeOrigen;
   final String idSedeDestino;
   final String idAmbulancia;
@@ -27,6 +29,10 @@ class Viaje {
       idCaja: _read(json, const ['id_caja', 'IDCaja']),
       idUsuarioConductor:
           _read(json, const ['id_usuario_conductor', 'IDUsuarioConductor']),
+      idUsuarioReceptor: _optional(
+        json,
+        const ['id_usuario_receptor', 'IDUsuarioReceptor'],
+      ),
       idSedeOrigen: _read(json, const ['id_sede_origen', 'IDSedeOrigen']),
       idSedeDestino: _read(json, const ['id_sede_destino', 'IDSedeDestino']),
       idAmbulancia: _read(json, const ['id_ambulancia', 'IDAmbulancia']),

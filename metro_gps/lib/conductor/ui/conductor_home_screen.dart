@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../auth/logout_action.dart';
 import '../conductor_viaje_api.dart';
 import '../models/viaje.dart';
 import 'conductor_viaje_detalle_screen.dart';
@@ -53,6 +54,7 @@ class _ConductorHomeScreenState extends State<ConductorHomeScreen> {
             icon: const Icon(Icons.refresh),
             tooltip: 'Actualizar',
           ),
+          const LogoutAppBarButton(),
         ],
       ),
       body: _cargando

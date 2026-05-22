@@ -1,31 +1,42 @@
+
 package handlers
 
 import (
-	"backend/internal/websockets"
-	"log"
+    "backend/internal/websockets"
+    "log"
+    "net/http"
 
-	"github.com/gin-gonic/gin"
+    "github.com/gin-gonic/gin"
 )
 
-// WsHandler es el manejador compatible con Gin. 
-// Recibe el hub como argumento para poder inyectarlo.
 func WsHandler(hub *websockets.Hub) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// 1. Upgrade de la conexión usando el Writer y Request de Gin
-		conn, err := websockets.Upgrader.Upgrade(c.Writer, c.Request, nil)
-		if err != nil {
-			log.Printf("Error al convertir a WebSocket: %v", err)
-			return
-		}
+return func(c *gin.Context) {
 
-		// 2. Crear el nuevo cliente
-		client := websockets.NewClient(hub, conn)
+        viajeID := c.Query("id_viaje")
+        
+        if viajeID == "" {
+            log.Println("Conexión rechazada: falta id_viaje en la URL")
+            c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "id_viaje es requerido"})
+            return
+        }
+        rol := "desconocido"
+        if rolInterface, existe := c.Get("rol"); existe {
+            if r, ok := rolInterface.(string); ok && r != "" {
+                rol = r
+            }
+        }
 
-		// 3. Registrar en el Hub
-		hub.Register <- client
+        conn, err := websockets.Upgrader.Upgrade(c.Writer, c.Request, nil)
+        if err != nil {
+            log.Printf("Error al convertir a WebSocket: %v", err)
+            return
+        }
 
-		// 4. Iniciar hilos de lectura y escritura
-		go client.WritePump()
-		go client.ReadPump()
-	}
+        client := websockets.NewClient(hub, conn, viajeID, rol)
+        log.Printf("WS conectado rol=%s viaje=%s", rol, viajeID)
+        hub.Register <- client
+
+        go client.WritePump()
+        go client.ReadPump()
+    }
 }
