@@ -13,22 +13,19 @@ import (
 
 
 func LoadConfigNeon() (*sqlx.DB, error) {
-	
+    if os.Getenv("RENDER") == "" {
+        godotenv.Load("../../.env") // solo en local, ignora el error
+    }
 
-	err := godotenv.Load("../../.env") 
-	if err != nil {
-		return nil, fmt.Errorf("error cargando archivo .env: %w", err)
-	}
+    connStr := os.Getenv("DATABASE_URL")
+    if connStr == "" {
+        return nil, fmt.Errorf("la variable DATABASE_URL está vacía")
+    }
 
-	connStr := os.Getenv("DATABASE_URL")
-	if connStr == "" {
-		return nil, fmt.Errorf("la variable DATABASE_URL está vacía")
-	}
+    db, err := sqlx.Connect("pgx", connStr)
+    if err != nil {
+        return nil, fmt.Errorf("error conectando a la base de datos: %w", err)
+    }
 
-	db, err := sqlx.Connect("pgx", connStr)
-	if err != nil {
-		return nil, fmt.Errorf("error conectando a la base de datos: %w", err)
-	}
-	
-	return db, nil
+    return db, nil
 }
