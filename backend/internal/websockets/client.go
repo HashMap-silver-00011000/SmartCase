@@ -86,7 +86,8 @@ func (c *Client) ReadPump() {
 			log.Printf("JSON inválido (%s): %v · %s", c.Rol, err, string(payload))
 			continue
 		}
-
+		log.Printf("Rol: %s · Datos: %+v", c.Rol, input)
+		
 		msg, err := input.ToModel(c.ViajeID)
 		if err != nil {
 			log.Printf("Telemetría rechazada: %v", err)
