@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	
 
 	"backend/config"
 	"backend/internal/repository"
@@ -13,11 +12,21 @@ import (
 
 func main(){
 	
+	// cfg, err := config.LoadConfigNeon()
+
+	// if err != nil {
+	// 	log.Fatalf("Error fatal: No se pudo conectar a PostgreSQL: %v", err)
+	// }
+
 	cfg, err := config.LoadConfigNeon()
+
+	
 
 	if err != nil {
 		log.Fatalf("Error fatal: No se pudo conectar a PostgreSQL: %v", err)
 	}
+
+
 	defer cfg.Close() // Asegura que la base de datos se cierre al apagar el servidor
 
 	telemetriaRepo := repository.NewTelemetriaRepository(cfg)
