@@ -3,7 +3,10 @@ package service
 import (
 	"backend/internal/models"
 	"backend/internal/repository"
+	"crypto/rand"
+	"fmt"
 	"log"
+	"math/big"
 
 	"github.com/google/uuid"
 )
@@ -18,7 +21,30 @@ func NewViajeService(r *repository.ViajeRepository) *ViajeService{
 
 func(s *ViajeService) CrearViaje(viaje *models.Viaje) error{
 
-	err :=  s.r.CrearViaje(viaje)
+	max := big.NewInt(1000000)
+	n, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		log.Println("Error al generar el pin:", err)
+		return err
+	}
+
+	pinFormateado := fmt.Sprintf("%06d", n)
+	log.Print(pinFormateado)
+	viajePin := &models.Viaje{
+		IDViaje:            viaje.IDViaje,
+		IDCaja:             viaje.IDCaja,
+		IDUsuarioConductor: viaje.IDUsuarioConductor,
+		IDUsuarioReceptor:  viaje.IDUsuarioReceptor,
+		IDSedeOrigen:       viaje.IDSedeOrigen,
+		IDSedeDestino:      viaje.IDSedeDestino,
+		IDAmbulancia:       viaje.IDAmbulancia,
+		FechaInicio:        viaje.FechaInicio,
+		FechaLlegada:       viaje.FechaLlegada,
+		EstadoViaje:        viaje.EstadoViaje,
+		PinEntrega:         pinFormateado,
+	}
+
+	err =  s.r.CrearViaje(viajePin)
 
 	if err != nil {
 		log.Printf("Error en service : %v", err)
@@ -28,7 +54,7 @@ func(s *ViajeService) CrearViaje(viaje *models.Viaje) error{
 	return nil
 }
 
-func (s *ViajeService) ListarPorEstado(viaje *models.Viaje) (*[]models.Viaje, error) {
+func (s *ViajeService) ListarPorEstado(viaje *models.ViajeConductor) (*[]models.ViajeConductor, error) {
 	
 	listaViaje , err := s.r.ListarPorEstado(viaje)
 
@@ -40,7 +66,7 @@ func (s *ViajeService) ListarPorEstado(viaje *models.Viaje) (*[]models.Viaje, er
 	return listaViaje, nil
 }
 
-func (s *ViajeService) ListarPorUsuario(id_usuario_conductor uuid.UUID) (*[]models.Viaje, error) {
+func (s *ViajeService) ListarPorUsuario(id_usuario_conductor uuid.UUID) (*[]models.ViajeConductor, error) {
 
 	listaViaje , err := s.r.ListarPorUsuario(id_usuario_conductor)
 
@@ -59,4 +85,34 @@ func (s *ViajeService) ListarPorReceptor(idUsuarioReceptor uuid.UUID) (*[]models
 		return nil, err
 	}
 	return listaViaje, nil
+}
+
+
+func (s *ViajeService) ActualizarEstadoViaje(viaje *models.Viaje) error {
+
+	err := s.r.ActualizarEstadoViaje(viaje)
+	if err != nil {
+		log.Printf("Error en servicio al actualizar caja: %v", err)
+		return  err
+	}
+	return nil
+}
+
+func(s *ViajeService) ComprobarPin(pin *models.Viaje) (bool , error){
+
+	pinViaje, err := s.r.ComprobarPin(pin)
+
+	if err != nil {
+		log.Printf("Error en servicio al verificar pin: %v", err)
+		return  false, err
+	}
+
+	if pinViaje.PinEntrega != pin.PinEntrega {
+		if err != nil {
+			log.Printf("Error en servicio al verificar pin: %v", err)
+		return  false, err
+		}
+	}
+	return true, nil
+	
 }

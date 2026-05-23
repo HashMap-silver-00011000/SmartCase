@@ -3,6 +3,7 @@ package handlers
 import (
 	"backend/internal/models"
 	"backend/internal/service"
+	"log"
 	"net/http"
 	"time"
 
@@ -26,6 +27,16 @@ type RequestViaje struct {
 	IDSedeDestino       uuid.UUID `json:"id_sede_destino" binding:"required"`
 	IDAmbulancia        uuid.UUID `json:"id_ambulancia" binding:"required"`
 	EstadoViaje         *string   `json:"estado_viaje,omitempty"`
+}
+
+type RequestActualizarEstado struct {
+    IDViaje     uuid.UUID `json:"id_viaje" binding:"required"`
+    EstadoViaje *string    `json:"estado_viaje" binding:"required,oneof=transito entregado 'muestra comprometida'"`
+}
+
+type RequestComprobarPinEstado struct {
+    IDViaje     uuid.UUID `json:"id_viaje" binding:"required"`
+    PinEntrega	string 		`db:"pin_entrega" json:"pin_entrega"`
 }
 
 func (h *ViajeHandler) CrearViaje(c *gin.Context) {
@@ -68,7 +79,7 @@ func (h *ViajeHandler) ListarPorEstado(c *gin.Context) {
 		return
 	}
 
-	viaje := &models.Viaje{
+	viaje := &models.ViajeConductor{
 		EstadoViaje: &estado,
 	}
 
@@ -78,7 +89,7 @@ func (h *ViajeHandler) ListarPorEstado(c *gin.Context) {
 		return
 	}
 
-	respuesta := []models.Viaje{}
+	respuesta := []models.ViajeConductor{}
 	if viajeEstado != nil {
 		respuesta = *viajeEstado
 	}
@@ -114,6 +125,7 @@ func (h *ViajeHandler) ListarPorReceptor(c *gin.Context) {
 	if lista != nil {
 		respuesta = *lista
 	}
+
 	c.JSON(http.StatusOK, respuesta)
 }
 
@@ -144,9 +156,65 @@ func (h *ViajeHandler) ListarPorUsuario(c *gin.Context) {
 		return
 	}
 
-	respuesta := []models.Viaje{}
+	respuesta := []models.ViajeConductor{}
 	if lista != nil {
 		respuesta = *lista
 	}
 	c.JSON(http.StatusOK, respuesta)
+}
+
+func (h *ViajeHandler) ActualizarEstadoViaje(c *gin.Context) {
+	
+	var estado RequestActualizarEstado
+
+	if err := c.ShouldBindJSON(&estado) ; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error" : "sintaxis invalida"})
+		return
+	}
+
+	estadoViaje :=  &models.Viaje{
+		IDViaje: estado.IDViaje,
+		EstadoViaje: estado.EstadoViaje,
+	}
+
+	log.Printf("%+v" , estado)
+
+	err := h.s.ActualizarEstadoViaje(estadoViaje)
+
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error" :  "error al actualizar el viaje"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"Mensaje" : "Viaje Actualizado"})
+
+}
+
+func(h *ViajeHandler) ComprobarPin(c *gin.Context){
+
+	var comprobar RequestComprobarPinEstado
+
+	if err := c.ShouldBindJSON(&comprobar) ; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error" : "sintaxis invalida"})
+		return
+	}
+
+	pin := &models.Viaje{
+		IDViaje: comprobar.IDViaje,
+		PinEntrega: comprobar.PinEntrega,
+	}
+
+	valor , err := h.s.ComprobarPin(pin)
+
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error" :  "error al comprobar el pin"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"Mensaje" : "Pin correcto",
+		"Valor"  : valor,
+	})
+
+
 }

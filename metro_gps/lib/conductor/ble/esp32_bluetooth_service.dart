@@ -17,6 +17,9 @@ class Esp32BluetoothService extends ChangeNotifier {
 
   static const deviceName = 'ESP32_Telemetria_Bryan';
 
+  // Comando que el ESP32 espera para mover el servo
+  static const _cmdAbrirCaja = 'ABRIR_CAJA';
+
   BluetoothConnection? _connection;
   StreamSubscription<Uint8List>? _inputSub;
   String _lineBuffer = '';
@@ -28,10 +31,29 @@ class Esp32BluetoothService extends ChangeNotifier {
   int bytesRecibidos = 0;
   int lineasProcesadas = 0;
 
-  final _packetController = StreamController<Esp32TelemetriaPacket>.broadcast();
+  final _packetController =
+      StreamController<Esp32TelemetriaPacket>.broadcast();
   Stream<Esp32TelemetriaPacket> get packets => _packetController.stream;
 
   bool get isSupported => !kIsWeb && Platform.isAndroid;
+
+  // ── NUEVO ─────────────────────────────────────────────────────────────────
+  /// Envía el comando al ESP32 para mover el servo a la posición de apertura.
+  /// Devuelve [true] si el envío fue exitoso.
+  Future<bool> abrirCaja() async {
+    if (!isConnected) return false;
+    try {
+      final bytes = utf8.encode('$_cmdAbrirCaja\n');
+      _connection!.output.add(Uint8List.fromList(bytes));
+      await _connection!.output.allSent;
+      return true;
+    } catch (e) {
+      lastError = 'Error al enviar comando al ESP32: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   Future<bool> ensurePermissions() async {
     if (!isSupported) return false;
@@ -41,9 +63,9 @@ class Esp32BluetoothService extends ChangeNotifier {
       Permission.locationWhenInUse,
     ].request();
     final connect = results[Permission.bluetoothConnect];
-    final scan = results[Permission.bluetoothScan];
+    final scan    = results[Permission.bluetoothScan];
     final connectOk = connect?.isGranted ?? false;
-    final scanOk = scan?.isGranted ?? connectOk;
+    final scanOk    = scan?.isGranted ?? connectOk;
     return connectOk && scanOk;
   }
 
@@ -107,13 +129,13 @@ class Esp32BluetoothService extends ChangeNotifier {
 
       final connection = await BluetoothConnection.toAddress(device.address);
       _connection = connection;
-      _lineBuffer = '';
-      bytesRecibidos = 0;
-      lineasProcesadas = 0;
+      _lineBuffer       = '';
+      bytesRecibidos    = 0;
+      lineasProcesadas  = 0;
 
       final input = _connection!.input;
       if (input == null) {
-        lastError = 'El socket Bluetooth no expuso canal de lectura';
+        lastError     = 'El socket Bluetooth no expuso canal de lectura';
         statusMessage = lastError;
         await _cleanupConnection();
         notifyListeners();
@@ -122,7 +144,7 @@ class Esp32BluetoothService extends ChangeNotifier {
 
       _inputSub = input.listen(
         _onData,
-        onDone: _handleDisconnect,
+        onDone:  _handleDisconnect,
         onError: (Object e) {
           lastError = e.toString();
           _handleDisconnect();
@@ -133,7 +155,7 @@ class Esp32BluetoothService extends ChangeNotifier {
       statusMessage = 'Conectado a ${device.name ?? device.address}';
       notifyListeners();
     } catch (e) {
-      lastError = e.toString();
+      lastError     = e.toString();
       statusMessage = 'Error al conectar: $e';
       await _cleanupConnection();
       notifyListeners();
@@ -199,14 +221,15 @@ class Esp32BluetoothService extends ChangeNotifier {
     while (true) {
       final nl = _lineBuffer.indexOf('\n');
       if (nl >= 0) {
-        final line = _lineBuffer.substring(0, nl).replaceAll('\r', '').trim();
+        final line =
+            _lineBuffer.substring(0, nl).replaceAll('\r', '').trim();
         _lineBuffer = _lineBuffer.substring(nl + 1);
         if (line.isNotEmpty) _processLine(line);
         continue;
       }
 
       final start = _lineBuffer.indexOf('{');
-      final end = _lineBuffer.lastIndexOf('}');
+      final end   = _lineBuffer.lastIndexOf('}');
       if (start >= 0 && end > start) {
         final jsonLine = _lineBuffer.substring(start, end + 1);
         if (_tryParseAndEmit(jsonLine)) {
@@ -220,6 +243,8 @@ class Esp32BluetoothService extends ChangeNotifier {
 
   void _processLine(String line) {
     if (line.isEmpty) return;
+    // Ignorar el evento de confirmación del servo
+    if (line.contains('caja_abierta')) return;
     final start = line.indexOf('{');
     if (start < 0) return;
     _tryParseAndEmit(line.substring(start));
@@ -228,8 +253,8 @@ class Esp32BluetoothService extends ChangeNotifier {
   bool _tryParseAndEmit(String jsonLine) {
     try {
       final packet = Esp32TelemetriaPacket.fromJsonLine(jsonLine);
-      lastPacket = packet;
-      lastError = null;
+      lastPacket       = packet;
+      lastError        = null;
       lineasProcesadas++;
       _packetController.add(packet);
       notifyListeners();

@@ -41,6 +41,13 @@ func NewClient(hub *Hub, conn *websocket.Conn, viajeID, rol string) *Client {
 	}
 }
 
+func ptrStr(s *string) string {
+    if s == nil {
+        return "<nil>"
+    }
+    return *s
+}
+
 func (c *Client) ReadPump() {
 	defer func() {
 		c.hub.Unregister <- c
@@ -86,8 +93,7 @@ func (c *Client) ReadPump() {
 			log.Printf("JSON inválido (%s): %v · %s", c.Rol, err, string(payload))
 			continue
 		}
-		log.Printf("Rol: %s · Datos: %+v", c.Rol, input)
-		
+		//Trabbajo codigo/ respuesta3e3e3e33333ee3
 		msg, err := input.ToModel(c.ViajeID)
 		if err != nil {
 			log.Printf("Telemetría rechazada: %v", err)

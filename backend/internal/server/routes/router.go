@@ -153,13 +153,15 @@ func ConfigurarRutas(db *sqlx.DB, hub *websockets.Hub) *gin.Engine {
 		//ZONA CONDUCTORES
 
 		panelConductor := privadas.Group("/conductor")
-		panelConductor.Use(middleware.RequiereAuth("conductor"))
+		panelConductor.Use(middleware.RequiereAuth("coductor"))
 		{
 			//Viaje
 			panelViaje := panelConductor.Group("/viaje")
 			{
 				panelViaje.GET("/tareas-viaje", viajeHandler.ListarPorUsuario)
 				panelViaje.GET("/tareas-viaje-telemetria", handlers.WsHandler(hub))
+				panelViaje.PUT("/actualizar-estado-viaje", viajeHandler.ActualizarEstadoViaje)
+				panelViaje.POST("/pin-desbloqueo", viajeHandler.ComprobarPin)
 			}
 
 		}

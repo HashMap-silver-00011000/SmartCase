@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../admin/clinica_api.dart';
-import '../conductor/models/viaje.dart';
+import 'models/viaje.dart';
 import '../core/api_client.dart';
 
 class ReceptorViajeApiResult<T> {
@@ -39,14 +39,11 @@ class ReceptorViajeApi {
         }
         final decoded = jsonDecode(body);
         if (decoded is List) {
-          final lista = <Viaje>[];
-          for (final item in decoded) {
-            if (item is Map<String, dynamic>) {
-              lista.add(Viaje.fromJson(item));
-            } else if (item is Map) {
-              lista.add(Viaje.fromJson(Map<String, dynamic>.from(item)));
-            }
-          }
+          final lista = decoded
+              .whereType<Map>()
+              .map((item) =>
+                  Viaje.fromJson(Map<String, dynamic>.from(item)))
+              .toList();
           return ReceptorViajeApiResult(
             statusCode: response.statusCode,
             data: lista,
