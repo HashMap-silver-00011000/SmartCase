@@ -43,7 +43,7 @@ class _AuthTabsScreenState extends State<AuthTabsScreen> {
       );
     } else if (_esConductor(rol)) {
       Navigator.of(context, rootNavigator: true).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const ConductorHomeScreen()),
+        MaterialPageRoute<void>(builder: (_) => ConductorHomeScreen()), // ← sin const
       );
     } else if (_esReceptor(rol)) {
       Navigator.of(context, rootNavigator: true).pushReplacement(
@@ -118,7 +118,7 @@ class _LoginFormState extends State<_LoginForm> {
 
   Future<void> _irAlPanelConductor() {
     return Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const ConductorHomeScreen()),
+      MaterialPageRoute<void>(builder: (_) => ConductorHomeScreen()), // ← sin const
       (_) => false,
     );
   }

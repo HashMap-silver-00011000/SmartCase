@@ -18,4 +18,5 @@ type Viaje struct {
 	FechaInicio        time.Time       `db:"fecha_inicio" json:"fecha_inicio"`
 	FechaLlegada       *time.Time      `db:"fecha_llegada" json:"fecha_llegada,omitempty"`
 	EstadoViaje        *string         `db:"estado_viaje" json:"estado_viaje,omitempty"`
+	PinEntrega			string 			`db:"pin_entrega" json:"pin_entrega"`
 }

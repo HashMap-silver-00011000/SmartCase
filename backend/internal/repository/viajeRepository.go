@@ -25,8 +25,8 @@ func NewViajeCaseRepository(db *sqlx.DB) *ViajeRepository{
 func (r *ViajeRepository) CrearViaje(viaje *models.Viaje) error {
 
 	_, err := r.db.NamedExec(`INSERT INTO viaje (id_viaje, id_caja, id_usuario_conductor, id_usuario_receptor, id_sede_origen, id_sede_destino, id_ambulancia,
-                                              fecha_inicio, fecha_llegada, estado_viaje) VALUES (:id_viaje, :id_caja, :id_usuario_conductor, :id_usuario_receptor, :id_sede_origen, :id_sede_destino, :id_ambulancia,
-                                              :fecha_inicio, :fecha_llegada, :estado_viaje)`, viaje)
+                                              fecha_inicio, fecha_llegada, estado_viaje, pin_entrega) VALUES (:id_viaje, :id_caja, :id_usuario_conductor, :id_usuario_receptor, :id_sede_origen, :id_sede_destino, :id_ambulancia,
+                                              :fecha_inicio, :fecha_llegada, :estado_viaje, :pin_entrega)`, viaje)
 
     log.Printf("Error creating viaje: %v", err)
     return err
@@ -49,9 +49,9 @@ func (r *ViajeRepository) ObtenerViaje(viaje *models.Viaje) (*models.Viaje, erro
 
 }
 
-func (r *ViajeRepository) ListarPorEstado(viaje *models.Viaje)(*[]models.Viaje, error){
+func (r *ViajeRepository) ListarPorEstado(viaje *models.ViajeConductor)(*[]models.ViajeConductor, error){
 
-	var listaViaje []models.Viaje
+	var listaViaje []models.ViajeConductor
 
 	err := r.db.Select(&listaViaje, `SELECT id_viaje, id_caja, id_usuario_conductor, id_usuario_receptor, id_sede_origen, id_sede_destino, id_ambulancia,
                                               fecha_inicio, fecha_llegada, estado_viaje
@@ -65,9 +65,9 @@ func (r *ViajeRepository) ListarPorEstado(viaje *models.Viaje)(*[]models.Viaje, 
 	return &listaViaje, nil
 }
 
-func (r *ViajeRepository) ListarPorUsuario(id_usuario_conductor uuid.UUID)(*[]models.Viaje, error){
+func (r *ViajeRepository) ListarPorUsuario(id_usuario_conductor uuid.UUID)(*[]models.ViajeConductor, error){
 
-	var listaViaje []models.Viaje
+	var listaViaje []models.ViajeConductor
 
 	err := r.db.Select(&listaViaje, `SELECT id_viaje, id_caja, id_usuario_conductor, id_usuario_receptor, id_sede_origen, id_sede_destino, id_ambulancia,
                                               fecha_inicio, fecha_llegada, estado_viaje
@@ -85,7 +85,7 @@ func (r *ViajeRepository) ListarPorReceptor(idUsuarioReceptor uuid.UUID) (*[]mod
 	var listaViaje []models.Viaje
 
 	err := r.db.Select(&listaViaje, `SELECT id_viaje, id_caja, id_usuario_conductor, id_usuario_receptor, id_sede_origen, id_sede_destino, id_ambulancia,
-                                              fecha_inicio, fecha_llegada, estado_viaje
+                                              fecha_inicio, fecha_llegada, estado_viaje, pin_entrega
 									FROM viaje WHERE id_usuario_receptor = $1 ORDER BY fecha_inicio DESC`, idUsuarioReceptor)
 
 	if err != nil {
@@ -96,3 +96,32 @@ func (r *ViajeRepository) ListarPorReceptor(idUsuarioReceptor uuid.UUID) (*[]mod
 	return &listaViaje, nil
 }
 
+func (r *ViajeRepository) ActualizarEstadoViaje(viaje *models.Viaje)  error {
+
+	_ ,err := r.db.NamedExec(`UPDATE viaje 
+                          SET estado_viaje = :estado_viaje 
+                          WHERE id_viaje = :id_viaje`,
+		viaje)
+
+	if err != nil {
+        log.Printf("Error en la solicitud: %v", err)
+        return err
+    }
+
+
+	return nil
+}
+
+func(r *ViajeRepository) ComprobarPin(pin *models.Viaje) (*models.Viaje, error){
+
+	var viaje models.Viaje
+	
+	err := r.db.Get(&viaje, "SELECT * FROM viaje WHERE id_viaje = $1", pin.IDViaje)
+
+	if err != nil {
+    	log.Print(err)
+		return nil, err // retorna error si no encuentra nada (sql.ErrNoRows)
+	}
+	return &viaje, nil
+
+}

@@ -24,8 +24,11 @@ class ConductorViajeApi {
 
   final ApiClient _client;
 
-  static const _tareasViaje = '/api/app/conductor/viaje/tareas-viaje';
+  // ── rutas ──────────────────────────────────────────────────────────────────
+  static const _tareasViaje       = '/api/app/conductor/viaje/tareas-viaje';
+  static const _actualizarEstado  = '/api/app/conductor/viaje/actualizar-estado-viaje';
 
+  // ── helpers ────────────────────────────────────────────────────────────────
   static String? _errorFromBody(String body) {
     if (body.isEmpty) return null;
     try {
@@ -41,6 +44,8 @@ class ConductorViajeApi {
     }
     return null;
   }
+
+  // ── métodos ────────────────────────────────────────────────────────────────
 
   /// GET: el backend usa el `sub` del JWT (cookie) como id del conductor.
   Future<ConductorViajeApiResult<List<Viaje>>> listarMisViajes() async {
@@ -82,6 +87,35 @@ class ConductorViajeApi {
         statusCode: response.statusCode,
         errorMessage: _errorFromBody(response.body) ??
             'No se pudieron cargar tus viajes (${response.statusCode})',
+      );
+    } catch (e) {
+      return ConductorViajeApiResult(
+        statusCode: 0,
+        errorMessage: 'Error de conexión: $e',
+      );
+    }
+  }
+
+  /// PUT: actualiza el estado del viaje ('transito', 'entregado', 'muestra comprometida').
+  Future<ConductorViajeApiResult<void>> actualizarEstadoViaje({
+    required String idViaje,
+    required String estado,
+  }) async {
+    try {
+      final response = await _client.put(
+        _actualizarEstado,
+        body: jsonEncode({
+          'id_viaje': idViaje,
+          'estado_viaje': estado,
+        }),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return ConductorViajeApiResult(statusCode: response.statusCode);
+      }
+      return ConductorViajeApiResult(
+        statusCode: response.statusCode,
+        errorMessage: _errorFromBody(response.body) ??
+            'Error al actualizar estado (${response.statusCode})',
       );
     } catch (e) {
       return ConductorViajeApiResult(

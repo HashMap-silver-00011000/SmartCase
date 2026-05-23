@@ -24,7 +24,7 @@ func (s *UsuarioService) NuevoUsuario(usuario *models.Usuario) error {
 }
 
 func (s *UsuarioService) ListarConductores() (*[]models.Usuario, error) {
-	return s.r.ListarPorRol("conductor")
+	return s.r.ListarPorRol("coductor")
 }
 
 func (s *UsuarioService) ListarReceptores() (*[]models.Usuario, error) {
