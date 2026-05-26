@@ -8,6 +8,10 @@ import 'admin_viajes_screen.dart';
 import 'admin_smartcase_screen.dart';
 import 'admin_sede_screen.dart';
 
+import 'package:flutter/foundation.dart';
+
+import '../../debug/ui/debug_telemetria_screen.dart';
+
 class AdminPanelScreen extends StatelessWidget {
   const AdminPanelScreen({super.key});
 
@@ -36,9 +40,7 @@ class AdminPanelScreen extends StatelessWidget {
             title: 'Sedes',
             subtitle: 'Sedes por clínica',
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const AdminSedeScreen(),
-              ),
+              MaterialPageRoute<void>(builder: (_) => const AdminSedeScreen()),
             ),
           ),
           _AdminMenuTile(
@@ -81,6 +83,17 @@ class AdminPanelScreen extends StatelessWidget {
               ),
             ),
           ),
+          if (kDebugMode)
+            _AdminMenuTile(
+              icon: Icons.bug_report_outlined,
+              title: 'Debug Telemetría',
+              subtitle: 'Mapa + tabla con datos ficticios (solo debug)',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const DebugTelemetriaScreen(),
+                ),
+              ),
+            ),
         ],
       ),
     );

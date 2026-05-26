@@ -1,3 +1,10 @@
+// lib/shared/ui/viaje_telemetria_screen.dart
+//
+// Vista de telemetría en vivo (WebSocket) + historial — para admin y receptor.
+// CAMBIOS respecto a la versión original:
+//   • Añade ViajeMapa encima de la tabla existente.
+//   • El resto del comportamiento (WS, historial, PIN) es idéntico.
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -9,15 +16,15 @@ import '../../core/telemetria_api.dart';
 import '../../core/telemetria_ws_client.dart';
 import '../../core/telemetria_ws_paths.dart';
 import '../../conductor/models/viaje.dart';
+import 'viaje_mapa_widget.dart'; // ← NUEVO
 
-/// Vista de telemetría en vivo (WebSocket) + historial para admin y receptor.
 class ViajeTelemetriaScreen extends StatefulWidget {
   const ViajeTelemetriaScreen({
     super.key,
     required this.viaje,
     required this.rolWs,
     this.titulo,
-    this.pinEntrega, // ← solo receptor lo pasa
+    this.pinEntrega,
   });
 
   final Viaje viaje;
@@ -42,10 +49,7 @@ class _ViajeTelemetriaScreenState extends State<ViajeTelemetriaScreen> {
   @override
   void initState() {
     super.initState();
-    _ws = TelemetriaWsClient(
-      idViaje: widget.viaje.idViaje,
-      rol: widget.rolWs,
-    );
+    _ws = TelemetriaWsClient(idViaje: widget.viaje.idViaje, rol: widget.rolWs);
     _iniciar();
   }
 
@@ -94,40 +98,80 @@ class _ViajeTelemetriaScreenState extends State<ViajeTelemetriaScreen> {
   @override
   Widget build(BuildContext context) {
     final v = widget.viaje;
-    final tienePin = widget.pinEntrega != null &&
-        widget.pinEntrega!.isNotEmpty;
+    final tienePin = widget.pinEntrega != null && widget.pinEntrega!.isNotEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FA),
       appBar: _buildAppBar(v),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── Franja de estado WS ───────────────────────────────────────
-          _WsStatusBanner(
-            estado: _estadoWs,
-            totalRegistros: _registros.length,
-          ),
+      body: _cargando
+          ? _buildLoading()
+          : CustomScrollView(
+              slivers: [
+                // ── Estado WebSocket ─────────────────────────────────────
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: _WsStatusBanner(
+                      estado: _estadoWs,
+                      totalRegistros: _registros.length,
+                    ),
+                  ),
+                ),
 
-          // ── PIN de entrega (solo receptor) ────────────────────────────
-          if (tienePin)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-              child: _PinEntregaWidget(pin: widget.pinEntrega!),
+                // ── PIN de entrega (solo receptor) ───────────────────────
+                if (tienePin)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: _PinEntregaWidget(pin: widget.pinEntrega!),
+                    ),
+                  ),
+
+                // ── Mapa OSM ─────────────────────────────────────────────
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SectionHeader(
+                          icon: Icons.map_outlined,
+                          label: 'Recorrido GPS',
+                          badge:
+                              _registros
+                                  .where(
+                                    (r) => r.latitud != 0 || r.longitud != 0,
+                                  )
+                                  .length
+                                  .toString() +
+                              ' puntos',
+                        ),
+                        const SizedBox(height: 8),
+                        ViajeMapa(registros: _registros), // ← NUEVO
+                      ],
+                    ),
+                  ),
+                ),
+
+                // ── Tabla de telemetría ───────────────────────────────────
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: _SectionHeader(
+                      icon: Icons.table_chart_outlined,
+                      label: 'Lecturas de sensores',
+                      badge: '${_registros.length}',
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                    child: _registros.isEmpty ? _buildEmpty() : _buildTabla(),
+                  ),
+                ),
+              ],
             ),
-
-          const SizedBox(height: 8),
-
-          // ── Tabla de telemetría ───────────────────────────────────────
-          Expanded(
-            child: _cargando
-                ? _buildLoading()
-                : _registros.isEmpty
-                    ? _buildEmpty()
-                    : _buildTabla(),
-          ),
-        ],
-      ),
     );
   }
 
@@ -137,8 +181,11 @@ class _ViajeTelemetriaScreenState extends State<ViajeTelemetriaScreen> {
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded,
-            size: 18, color: Color(0xFF1A1F36)),
+        icon: const Icon(
+          Icons.arrow_back_ios_new_rounded,
+          size: 18,
+          color: Color(0xFF1A1F36),
+        ),
         onPressed: () => Navigator.of(context).pop(),
       ),
       title: Row(
@@ -224,7 +271,7 @@ class _ViajeTelemetriaScreenState extends State<ViajeTelemetriaScreen> {
   Widget _buildEmpty() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.symmetric(vertical: 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -266,78 +313,76 @@ class _ViajeTelemetriaScreenState extends State<ViajeTelemetriaScreen> {
   }
 
   Widget _buildTabla() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE8ECF2)),
+      ),
+      clipBehavior: Clip.hardEdge,
       child: SingleChildScrollView(
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE8ECF2)),
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          headingRowColor: WidgetStateProperty.all(const Color(0xFFF8F9FC)),
+          headingTextStyle: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF8A94A6),
+            letterSpacing: 0.5,
           ),
-          clipBehavior: Clip.hardEdge,
-          child: DataTable(
-            headingRowColor: WidgetStateProperty.all(const Color(0xFFF8F9FC)),
-            headingTextStyle: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF8A94A6),
-              letterSpacing: 0.5,
-            ),
-            dataTextStyle: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF1A1F36),
-              fontWeight: FontWeight.w500,
-            ),
-            dividerThickness: 1,
-            columnSpacing: 20,
-            horizontalMargin: 16,
-            columns: const [
-              DataColumn(label: Text('HORA')),
-              DataColumn(label: Text('TEMP °C')),
-              DataColumn(label: Text('LAT')),
-              DataColumn(label: Text('LON')),
-              DataColumn(label: Text('G')),
-              DataColumn(label: Text('HUM')),
-              DataColumn(label: Text('ALERTA')),
-            ],
-            rows: _registros.map((r) {
-              final tieneAlerta =
-                  r.alertaGenerada != null && r.alertaGenerada!.isNotEmpty;
-              return DataRow(
-                cells: [
-                  DataCell(Text(_fmt(r.registradoEn))),
-                  DataCell(Text(r.temperaturaInterna.toStringAsFixed(1))),
-                  DataCell(Text(r.latitud.toStringAsFixed(5))),
-                  DataCell(Text(r.longitud.toStringAsFixed(5))),
-                  DataCell(Text(r.fuerzaG.toStringAsFixed(2))),
-                  DataCell(
-                      Text(r.humedad?.toStringAsFixed(0) ?? '—')),
-                  DataCell(
-                    tieneAlerta
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFEBEE),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              r.alertaGenerada!,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFFB71C1C),
-                              ),
-                            ),
-                          )
-                        : const Text('—'),
-                  ),
-                ],
-              );
-            }).toList(),
+          dataTextStyle: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF1A1F36),
+            fontWeight: FontWeight.w500,
           ),
+          dividerThickness: 1,
+          columnSpacing: 20,
+          horizontalMargin: 16,
+          columns: const [
+            DataColumn(label: Text('HORA')),
+            DataColumn(label: Text('TEMP °C')),
+            DataColumn(label: Text('LAT')),
+            DataColumn(label: Text('LON')),
+            DataColumn(label: Text('G')),
+            DataColumn(label: Text('HUM')),
+            DataColumn(label: Text('ALERTA')),
+          ],
+          rows: _registros.map((r) {
+            final tieneAlerta =
+                r.alertaGenerada != null && r.alertaGenerada!.isNotEmpty;
+            return DataRow(
+              cells: [
+                DataCell(Text(_fmt(r.registradoEn))),
+                DataCell(Text(r.temperaturaInterna.toStringAsFixed(1))),
+                DataCell(Text(r.latitud.toStringAsFixed(5))),
+                DataCell(Text(r.longitud.toStringAsFixed(5))),
+                DataCell(Text(r.fuerzaG.toStringAsFixed(2))),
+                DataCell(Text(r.humedad?.toStringAsFixed(0) ?? '—')),
+                DataCell(
+                  tieneAlerta
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFEBEE),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            r.alertaGenerada!,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFB71C1C),
+                            ),
+                          ),
+                        )
+                      : const Text('—'),
+                ),
+              ],
+            );
+          }).toList(),
         ),
       ),
     );
@@ -354,10 +399,7 @@ class _ViajeTelemetriaScreenState extends State<ViajeTelemetriaScreen> {
 // ─── Banner de estado WebSocket ───────────────────────────────────────────────
 
 class _WsStatusBanner extends StatelessWidget {
-  const _WsStatusBanner({
-    required this.estado,
-    required this.totalRegistros,
-  });
+  const _WsStatusBanner({required this.estado, required this.totalRegistros});
 
   final String estado;
   final int totalRegistros;
@@ -366,7 +408,6 @@ class _WsStatusBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final enVivo = estado == 'En vivo';
     return Container(
-      margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -378,17 +419,13 @@ class _WsStatusBanner extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: enVivo
-                  ? const Color(0xFFE6F4EA)
-                  : const Color(0xFFFFF8E1),
+              color: enVivo ? const Color(0xFFE6F4EA) : const Color(0xFFFFF8E1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               enVivo ? Icons.sensors_rounded : Icons.cloud_off_rounded,
               size: 18,
-              color: enVivo
-                  ? const Color(0xFF1B873F)
-                  : const Color(0xFFB45309),
+              color: enVivo ? const Color(0xFF1B873F) : const Color(0xFFB45309),
             ),
           ),
           const SizedBox(width: 12),
@@ -417,15 +454,12 @@ class _WsStatusBanner extends StatelessWidget {
               ],
             ),
           ),
-          if (enVivo)
-            _PulseDot(),
+          if (enVivo) _PulseDot(),
         ],
       ),
     );
   }
 }
-
-// ─── Punto pulsante "en vivo" ─────────────────────────────────────────────────
 
 class _PulseDot extends StatefulWidget {
   @override
@@ -444,9 +478,10 @@ class _PulseDotState extends State<_PulseDot>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.4, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    _anim = Tween<double>(
+      begin: 0.4,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -467,6 +502,51 @@ class _PulseDotState extends State<_PulseDot>
           shape: BoxShape.circle,
         ),
       ),
+    );
+  }
+}
+
+// ─── Encabezado de sección ───────────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.icon, required this.label, this.badge});
+
+  final IconData icon;
+  final String label;
+  final String? badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: const Color(0xFF8A94A6)),
+        const SizedBox(width: 6),
+        Text(
+          label.toUpperCase(),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            letterSpacing: 0.8,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        if (badge != null) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0F4FF),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              badge!,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A73E8),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -492,15 +572,11 @@ class _PinEntregaWidgetState extends State<_PinEntregaWidget> {
           children: [
             Icon(Icons.check_circle_outline, color: Colors.white, size: 16),
             SizedBox(width: 8),
-            Text(
-              'PIN copiado al portapapeles',
-              style: TextStyle(fontSize: 13),
-            ),
+            Text('PIN copiado al portapapeles', style: TextStyle(fontSize: 13)),
           ],
         ),
         behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         backgroundColor: const Color(0xFF1B873F),
         duration: const Duration(seconds: 2),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),

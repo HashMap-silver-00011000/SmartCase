@@ -13,3 +13,17 @@ Future<void> main() async {
     ),
   );
 }
+
+// import 'map_test_screen.dart';
+// Future<void> main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   await ClinicaApi.sharedClient.loadSavedSession();
+
+//   runApp(
+//     const MaterialApp(
+//       debugShowCheckedModeBanner: false,
+//       title: 'Metro GPS',
+//       home: MapTestScreen(),
+//     ),
+//   );
+// }
