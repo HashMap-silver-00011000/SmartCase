@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../ambulancia_api.dart';
 import '../models/ambulancia.dart';
+import 'admin_theme.dart';
 
 class AdminAmbulanciaScreen extends StatefulWidget {
   const AdminAmbulanciaScreen({super.key});
@@ -41,60 +42,102 @@ class _AdminAmbulanciaScreenState extends State<AdminAmbulanciaScreen> {
   }
 
   Future<void> _mostrarFormulario({Ambulancia? item}) async {
-    final placaCtrl = TextEditingController(text: item?.placa ?? '');
+    final placaCtrl =
+        TextEditingController(text: item?.placa ?? '');
     var tipo = item?.tipo ?? Ambulancia.tiposPermitidos.first;
     final esEdicion = item != null;
 
     final guardado = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(esEdicion ? 'Editar ambulancia' : 'Nueva ambulancia'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: placaCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Placa',
-                  border: OutlineInputBorder(),
-                ),
-                textCapitalization: TextCapitalization.characters,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: tipo,
-                decoration: const InputDecoration(
-                  labelText: 'Tipo',
-                  border: OutlineInputBorder(),
-                ),
-                items: Ambulancia.tiposPermitidos
-                    .map(
-                      (t) => DropdownMenuItem(
-                        value: t,
-                        child: Text(t),
+        builder: (ctx, setDs) => Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    AdminIconAvatar(
+                      icon: esEdicion
+                          ? Icons.edit_outlined
+                          : Icons.add_circle_outline,
+                      color: AdminColors.cyanDim,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      esEdicion ? 'Editar ambulancia' : 'Nueva ambulancia',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AdminColors.textPrimary,
                       ),
-                    )
-                    .toList(),
-                onChanged: (v) {
-                  if (v != null) setDialogState(() => tipo = v);
-                },
-              ),
-            ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: placaCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Placa',
+                    prefixIcon: Icon(Icons.directions_car_outlined, size: 20),
+                  ),
+                  textCapitalization: TextCapitalization.characters,
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  value: tipo,
+                  decoration: const InputDecoration(
+                    labelText: 'Tipo de vehículo',
+                    prefixIcon:
+                        Icon(Icons.local_hospital_outlined, size: 20),
+                  ),
+                  items: Ambulancia.tiposPermitidos
+                      .map((t) => DropdownMenuItem(
+                            value: t,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  t == 'moto'
+                                      ? Icons.two_wheeler
+                                      : Icons.local_hospital,
+                                  size: 18,
+                                  color: AdminColors.textSecondary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(t),
+                              ],
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) setDs(() => tipo = v);
+                  },
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancelar'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: () {
+                        if (placaCtrl.text.trim().isEmpty) return;
+                        Navigator.pop(ctx, true);
+                      },
+                      child: Text(esEdicion ? 'Guardar cambios' : 'Crear'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (placaCtrl.text.trim().isEmpty) return;
-                Navigator.pop(ctx, true);
-              },
-              child: Text(esEdicion ? 'Guardar' : 'Crear'),
-            ),
-          ],
         ),
       ),
     );
@@ -110,84 +153,105 @@ class _AdminAmbulanciaScreenState extends State<AdminAmbulanciaScreen> {
     if (esEdicion) {
       final res = await _api.actualizar(
         Ambulancia(
-          idAmbulancia: item.idAmbulancia,
-          placa: placa,
-          tipo: tipo,
-        ),
+            idAmbulancia: item.idAmbulancia, placa: placa, tipo: tipo),
       );
       if (!mounted) return;
-      if (res.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ambulancia actualizada')),
-        );
-        await _cargarLista();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(res.errorMessage ?? 'Error al actualizar')),
-        );
-      }
+      _mostrarSnack(
+        res.isSuccess ? 'Ambulancia actualizada' : res.errorMessage,
+        esError: !res.isSuccess,
+      );
+      if (res.isSuccess) await _cargarLista();
     } else {
       final res = await _api.crear(AmbulanciaInput(placa: placa, tipo: tipo));
       if (!mounted) return;
-      if (res.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ambulancia creada')),
-        );
-        await _cargarLista();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(res.errorMessage ?? 'Error al crear')),
-        );
-      }
+      _mostrarSnack(
+        res.isSuccess ? 'Ambulancia creada' : res.errorMessage,
+        esError: !res.isSuccess,
+      );
+      if (res.isSuccess) await _cargarLista();
     }
   }
 
   Future<void> _confirmarEliminar(Ambulancia item) async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Eliminar ambulancia'),
-        content: Text('¿Eliminar placa "${item.placa}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
+    final ok = await showDeleteDialog(
+      context,
+      title: 'Eliminar ambulancia',
+      content:
+          '¿Confirmas que deseas eliminar la ambulancia con placa "${item.placa}"? Esta acción no se puede deshacer.',
+    );
+    if (!ok || !mounted) return;
+
+    final res = await _api.eliminar(item.idAmbulancia);
+    if (!mounted) return;
+    _mostrarSnack(
+      res.isSuccess ? 'Ambulancia eliminada' : res.errorMessage,
+      esError: !res.isSuccess,
+    );
+    if (res.isSuccess) await _cargarLista();
+  }
+
+  void _mostrarSnack(String? msg, {bool esError = false}) {
+    if (msg == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: esError ? AdminColors.danger : null,
+      ),
+    );
+  }
+
+  // ─── Contadores resumen ────────────────────────────────────────────────────
+
+  Widget _buildSummary() {
+    if (_items.isEmpty) return const SizedBox.shrink();
+    final motos = _items.where((a) => a.tipo == 'moto').length;
+    final ambulancias = _items.where((a) => a.tipo == 'ambulancia').length;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AdminColors.navy,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          _StatChip(
+            icon: Icons.local_hospital,
+            label: 'Ambulancias',
+            value: ambulancias,
+            color: AdminColors.cyan,
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
+          const SizedBox(width: 12),
+          _StatChip(
+            icon: Icons.two_wheeler,
+            label: 'Motos',
+            value: motos,
+            color: Colors.amberAccent,
+          ),
+          const Spacer(),
+          Text(
+            '${_items.length} total',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.6),
+              fontSize: 13,
             ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Eliminar'),
           ),
         ],
       ),
     );
-    if (confirmar != true || !mounted) return;
-
-    final res = await _api.eliminar(item.idAmbulancia);
-    if (!mounted) return;
-    if (res.isSuccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ambulancia eliminada')),
-      );
-      await _cargarLista();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res.errorMessage ?? 'Error al eliminar')),
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AdminColors.surface,
       appBar: AppBar(
-        title: const Text('Panel admin — Ambulancias'),
+        title: const Text('Ambulancias'),
+        backgroundColor: AdminColors.navy,
         actions: [
           IconButton(
             onPressed: _cargando ? null : _cargarLista,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Actualizar',
           ),
         ],
@@ -196,75 +260,91 @@ class _AdminAmbulanciaScreenState extends State<AdminAmbulanciaScreen> {
         onPressed: _cargando ? null : () => _mostrarFormulario(),
         icon: const Icon(Icons.add),
         label: const Text('Nueva ambulancia'),
+        backgroundColor: AdminColors.navy,
       ),
       body: _cargando
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+              ? AdminErrorState(
+                  message: _error!, onRetry: _cargarLista)
+              : _items.isEmpty
+                  ? const AdminEmptyState(
+                      message: 'No hay ambulancias registradas',
+                      icon: Icons.emergency_outlined,
+                    )
+                  : Column(
                       children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
-                        FilledButton(
-                          onPressed: _cargarLista,
-                          child: const Text('Reintentar'),
+                        _buildSummary(),
+                        Expanded(
+                          child: RefreshIndicator(
+                            onRefresh: _cargarLista,
+                            child: ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(
+                                  16, 16, 16, 100),
+                              itemCount: _items.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 0),
+                              itemBuilder: (context, index) {
+                                final a = _items[index];
+                                return AdminItemCard(
+                                  title: a.placa,
+                                  subtitle: a.idAmbulancia,
+                                  leading: AdminIconAvatar(
+                                    icon: a.tipo == 'moto'
+                                        ? Icons.two_wheeler
+                                        : Icons.local_hospital_outlined,
+                                    color: a.tipo == 'moto'
+                                        ? Colors.amber
+                                        : AdminColors.cyanDim,
+                                  ),
+                                  badge: AdminStatusBadge(
+                                    label: a.tipo,
+                                    color: a.tipo == 'moto'
+                                        ? Colors.amber
+                                        : AdminColors.cyanDim,
+                                  ),
+                                  onEdit: () =>
+                                      _mostrarFormulario(item: a),
+                                  onDelete: () =>
+                                      _confirmarEliminar(a),
+                                );
+                              },
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                )
-              : _items.isEmpty
-                  ? const Center(child: Text('No hay ambulancias registradas'))
-                  : RefreshIndicator(
-                      onRefresh: _cargarLista,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
-                        itemCount: _items.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final a = _items[index];
-                          return ListTile(
-                            leading: Icon(
-                              a.tipo == 'moto'
-                                  ? Icons.two_wheeler
-                                  : Icons.local_hospital,
-                            ),
-                            title: Text(a.placa),
-                            subtitle: Text('${a.tipo} · ${a.idAmbulancia}'),
-                            trailing: PopupMenuButton<String>(
-                              onSelected: (value) {
-                                if (value == 'editar') {
-                                  _mostrarFormulario(item: a);
-                                } else if (value == 'eliminar') {
-                                  _confirmarEliminar(a);
-                                }
-                              },
-                              itemBuilder: (_) => const [
-                                PopupMenuItem(
-                                  value: 'editar',
-                                  child: ListTile(
-                                    leading: Icon(Icons.edit),
-                                    title: Text('Editar'),
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                                PopupMenuItem(
-                                  value: 'eliminar',
-                                  child: ListTile(
-                                    leading: Icon(Icons.delete_outline),
-                                    title: Text('Eliminar'),
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  const _StatChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+  final IconData icon;
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(width: 6),
+        Text(
+          '$value $label',
+          style: TextStyle(
+            color: color,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }

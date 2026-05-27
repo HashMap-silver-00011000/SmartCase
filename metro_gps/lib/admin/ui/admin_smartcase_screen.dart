@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../models/smartcase.dart';
 import '../smartcase_api.dart';
+import 'admin_theme.dart';
 
 class AdminSmartCaseScreen extends StatefulWidget {
   const AdminSmartCaseScreen({super.key});
 
   @override
-  State<AdminSmartCaseScreen> createState() => _AdminSmartCaseScreenState();
+  State<AdminSmartCaseScreen> createState() =>
+      _AdminSmartCaseScreenState();
 }
 
-class _AdminSmartCaseScreenState extends State<AdminSmartCaseScreen> {
+class _AdminSmartCaseScreenState
+    extends State<AdminSmartCaseScreen> {
   final _api = SmartCaseApi();
   List<SmartCase> _items = [];
   bool _cargando = true;
@@ -41,7 +44,8 @@ class _AdminSmartCaseScreenState extends State<AdminSmartCaseScreen> {
   }
 
   Future<void> _mostrarFormulario({SmartCase? item}) async {
-    final organoCtrl = TextEditingController(text: item?.organo ?? '');
+    final organoCtrl =
+        TextEditingController(text: item?.organo ?? '');
     var estado =
         item?.estadoSolenoide ?? SmartCase.estadosSolenoide.first;
     final esEdicion = item != null;
@@ -49,53 +53,98 @@ class _AdminSmartCaseScreenState extends State<AdminSmartCaseScreen> {
     final guardado = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(esEdicion ? 'Editar SmartCase' : 'Nueva caja'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                value: estado,
-                decoration: const InputDecoration(
-                  labelText: 'Estado solenoide',
-                  border: OutlineInputBorder(),
-                ),
-                items: SmartCase.estadosSolenoide
-                    .map(
-                      (e) => DropdownMenuItem(
-                        value: e,
-                        child: Text(e),
+        builder: (ctx, setDs) => Dialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    AdminIconAvatar(
+                      icon: esEdicion
+                          ? Icons.edit_outlined
+                          : Icons.inventory_2_outlined,
+                      color: const Color(0xFFE65100),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      esEdicion ? 'Editar SmartCase' : 'Nueva caja',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AdminColors.textPrimary,
                       ),
-                    )
-                    .toList(),
-                onChanged: (v) {
-                  if (v != null) setDialogState(() => estado = v);
-                },
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: organoCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Órgano',
-                  border: OutlineInputBorder(),
+                    ),
+                  ],
                 ),
-                textCapitalization: TextCapitalization.words,
-              ),
-            ],
+                const SizedBox(height: 24),
+                TextField(
+                  controller: organoCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Órgano a transportar',
+                    prefixIcon:
+                        Icon(Icons.medical_services_outlined, size: 20),
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  value: estado,
+                  decoration: const InputDecoration(
+                    labelText: 'Estado del solenoide',
+                    prefixIcon:
+                        Icon(Icons.lock_outline, size: 20),
+                  ),
+                  items: SmartCase.estadosSolenoide
+                      .map((e) => DropdownMenuItem(
+                            value: e,
+                            child: Row(children: [
+                              Icon(
+                                e == 'bloqueado'
+                                    ? Icons.lock
+                                    : Icons.lock_open,
+                                size: 18,
+                                color: e == 'bloqueado'
+                                    ? AdminColors.danger
+                                    : AdminColors.success,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(e),
+                            ]),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) setDs(() => estado = v);
+                  },
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () =>
+                          Navigator.pop(ctx, false),
+                      child: const Text('Cancelar'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: () {
+                        if (organoCtrl.text.trim().isEmpty)
+                          return;
+                        Navigator.pop(ctx, true);
+                      },
+                      child: Text(
+                          esEdicion ? 'Guardar cambios' : 'Crear'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (organoCtrl.text.trim().isEmpty) return;
-                Navigator.pop(ctx, true);
-              },
-              child: Text(esEdicion ? 'Guardar' : 'Crear'),
-            ),
-          ],
         ),
       ),
     );
@@ -111,86 +160,67 @@ class _AdminSmartCaseScreenState extends State<AdminSmartCaseScreen> {
     if (esEdicion) {
       final res = await _api.actualizar(
         SmartCase(
-          idCaja: item.idCaja,
-          estadoSolenoide: estado,
-          organo: organo,
-        ),
+            idCaja: item.idCaja,
+            estadoSolenoide: estado,
+            organo: organo),
       );
       if (!mounted) return;
-      if (res.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Caja actualizada')),
-        );
-        await _cargarLista();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(res.errorMessage ?? 'Error al actualizar')),
-        );
-      }
+      _snack(
+          res.isSuccess ? 'Caja actualizada' : res.errorMessage,
+          esError: !res.isSuccess);
+      if (res.isSuccess) await _cargarLista();
     } else {
       final res = await _api.crear(
         SmartCaseInput(estadoSolenoide: estado, organo: organo),
       );
       if (!mounted) return;
-      if (res.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Caja creada')),
-        );
-        await _cargarLista();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(res.errorMessage ?? 'Error al crear')),
-        );
-      }
+      _snack(res.isSuccess ? 'Caja creada' : res.errorMessage,
+          esError: !res.isSuccess);
+      if (res.isSuccess) await _cargarLista();
     }
   }
 
   Future<void> _confirmarEliminar(SmartCase item) async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Eliminar caja'),
-        content: Text('¿Eliminar caja de "${item.organo}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
+    final ok = await showDeleteDialog(
+      context,
+      title: 'Eliminar SmartCase',
+      content:
+          '¿Eliminar la caja para "${item.organo}"? Esta acción no se puede deshacer.',
     );
-    if (confirmar != true || !mounted) return;
-
+    if (!ok || !mounted) return;
     final res = await _api.eliminar(item.idCaja);
     if (!mounted) return;
-    if (res.isSuccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Caja eliminada')),
-      );
-      await _cargarLista();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res.errorMessage ?? 'Error al eliminar')),
-      );
-    }
+    _snack(
+        res.isSuccess ? 'Caja eliminada' : res.errorMessage,
+        esError: !res.isSuccess);
+    if (res.isSuccess) await _cargarLista();
+  }
+
+  void _snack(String? msg, {bool esError = false}) {
+    if (msg == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text(msg),
+          backgroundColor:
+              esError ? AdminColors.danger : null),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final bloqueadas =
+        _items.where((c) => c.estadoSolenoide == 'bloqueado').length;
+    final libres = _items.length - bloqueadas;
+
     return Scaffold(
+      backgroundColor: AdminColors.surface,
       appBar: AppBar(
-        title: const Text('Panel admin — SmartCase'),
+        title: const Text('SmartCase'),
+        backgroundColor: AdminColors.navy,
         actions: [
           IconButton(
             onPressed: _cargando ? null : _cargarLista,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Actualizar',
           ),
         ],
@@ -199,77 +229,131 @@ class _AdminSmartCaseScreenState extends State<AdminSmartCaseScreen> {
         onPressed: _cargando ? null : () => _mostrarFormulario(),
         icon: const Icon(Icons.add),
         label: const Text('Nueva caja'),
+        backgroundColor: AdminColors.navy,
       ),
       body: _cargando
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
-                        FilledButton(
-                          onPressed: _cargarLista,
-                          child: const Text('Reintentar'),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
+              ? AdminErrorState(
+                  message: _error!, onRetry: _cargarLista)
               : _items.isEmpty
-                  ? const Center(child: Text('No hay cajas registradas'))
-                  : RefreshIndicator(
-                      onRefresh: _cargarLista,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
-                        itemCount: _items.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final c = _items[index];
-                          return ListTile(
-                            leading: Icon(
-                              c.estadoSolenoide == 'bloqueado'
-                                  ? Icons.lock
-                                  : Icons.lock_open,
+                  ? const AdminEmptyState(
+                      message:
+                          'No hay cajas SmartCase registradas',
+                      icon: Icons.inventory_2_outlined,
+                    )
+                  : Column(
+                      children: [
+                        // Barra de resumen
+                        if (_items.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.fromLTRB(
+                                16, 16, 16, 0),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AdminColors.navy,
+                              borderRadius:
+                                  BorderRadius.circular(14),
                             ),
-                            title: Text(c.organo),
-                            subtitle: Text(
-                              '${c.estadoSolenoide} · ${c.idCaja}',
-                            ),
-                            trailing: PopupMenuButton<String>(
-                              onSelected: (value) {
-                                if (value == 'editar') {
-                                  _mostrarFormulario(item: c);
-                                } else if (value == 'eliminar') {
-                                  _confirmarEliminar(c);
-                                }
-                              },
-                              itemBuilder: (_) => const [
-                                PopupMenuItem(
-                                  value: 'editar',
-                                  child: ListTile(
-                                    leading: Icon(Icons.edit),
-                                    title: Text('Editar'),
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
+                            child: Row(
+                              children: [
+                                _CajaStatChip(
+                                  icon: Icons.lock,
+                                  label: 'Bloqueadas',
+                                  value: bloqueadas,
+                                  color: const Color(0xFFFF7043),
                                 ),
-                                PopupMenuItem(
-                                  value: 'eliminar',
-                                  child: ListTile(
-                                    leading: Icon(Icons.delete_outline),
-                                    title: Text('Eliminar'),
-                                    contentPadding: EdgeInsets.zero,
+                                const SizedBox(width: 16),
+                                _CajaStatChip(
+                                  icon: Icons.lock_open,
+                                  label: 'Disponibles',
+                                  value: libres,
+                                  color: AdminColors.success,
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '${_items.length} total',
+                                  style: TextStyle(
+                                    color: Colors.white
+                                        .withOpacity(0.6),
+                                    fontSize: 13,
                                   ),
                                 ),
                               ],
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        Expanded(
+                          child: RefreshIndicator(
+                            onRefresh: _cargarLista,
+                            child: ListView.builder(
+                              padding:
+                                  const EdgeInsets.fromLTRB(
+                                      16, 16, 16, 100),
+                              itemCount: _items.length,
+                              itemBuilder: (context, index) {
+                                final c = _items[index];
+                                final bloqueado =
+                                    c.estadoSolenoide ==
+                                        'bloqueado';
+                                return AdminItemCard(
+                                  title: c.organo,
+                                  subtitle: c.idCaja,
+                                  leading: AdminIconAvatar(
+                                    icon: bloqueado
+                                        ? Icons.lock
+                                        : Icons.lock_open,
+                                    color: bloqueado
+                                        ? const Color(0xFFFF7043)
+                                        : AdminColors.success,
+                                  ),
+                                  badge: AdminStatusBadge(
+                                    label: c.estadoSolenoide,
+                                    color: bloqueado
+                                        ? const Color(0xFFFF7043)
+                                        : AdminColors.success,
+                                  ),
+                                  onEdit: () =>
+                                      _mostrarFormulario(item: c),
+                                  onDelete: () =>
+                                      _confirmarEliminar(c),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+    );
+  }
+}
+
+class _CajaStatChip extends StatelessWidget {
+  const _CajaStatChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+  final IconData icon;
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 16),
+        const SizedBox(width: 6),
+        Text(
+          '$value $label',
+          style: TextStyle(
+            color: color,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
