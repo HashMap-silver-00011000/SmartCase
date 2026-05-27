@@ -2,6 +2,7 @@
     <!-- BLE permissions (Android 12+) -->
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Optional if your BLE flow includes advertising -->
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
 
