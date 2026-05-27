@@ -4,10 +4,10 @@ import '../clinica_api.dart';
 import '../models/clinica.dart';
 import '../models/sede.dart';
 import '../sede_api.dart';
+import 'admin_theme.dart';
 
 class AdminSedeScreen extends StatefulWidget {
   const AdminSedeScreen({super.key, this.clinicaInicial});
-
   final Clinica? clinicaInicial;
 
   @override
@@ -57,25 +57,20 @@ class _AdminSedeScreenState extends State<AdminSedeScreen> {
         }
       }
     }
-    seleccionada ??= res.data!.isNotEmpty ? res.data!.first : null;
+    seleccionada ??=
+        res.data!.isNotEmpty ? res.data!.first : null;
     setState(() {
       _cargandoClinicas = false;
       _clinicas = res.data!;
       _clinicaSeleccionada = seleccionada;
     });
-    if (seleccionada != null) {
-      await _cargarSedes();
-    }
+    if (seleccionada != null) await _cargarSedes();
   }
 
   Future<void> _cargarSedes({bool silencioso = false}) async {
     final clinica = _clinicaSeleccionada;
     if (clinica == null) {
-      if (!mounted) return;
-      setState(() {
-        _sedes = [];
-        _cargandoSedes = false;
-      });
+      if (mounted) setState(() => _sedes = []);
       return;
     }
     if (!silencioso && mounted) {
@@ -85,14 +80,16 @@ class _AdminSedeScreenState extends State<AdminSedeScreen> {
       });
     }
     try {
-      final res = await _sedeApi.listarPorClinica(clinica.idClinica);
+      final res =
+          await _sedeApi.listarPorClinica(clinica.idClinica);
       if (!mounted) return;
       setState(() {
         if (res.isSuccess && res.data != null) {
           _sedes = res.data!;
           _error = null;
         } else {
-          _error = res.errorMessage ?? 'Error al cargar sedes';
+          _error =
+              res.errorMessage ?? 'Error al cargar sedes';
           if (!silencioso) _sedes = [];
         }
       });
@@ -103,9 +100,7 @@ class _AdminSedeScreenState extends State<AdminSedeScreen> {
         if (!silencioso) _sedes = [];
       });
     } finally {
-      if (mounted) {
-        setState(() => _cargandoSedes = false);
-      }
+      if (mounted) setState(() => _cargandoSedes = false);
     }
   }
 
@@ -119,52 +114,99 @@ class _AdminSedeScreenState extends State<AdminSedeScreen> {
     final clinica = _clinicaSeleccionada;
     if (clinica == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona una clínica primero')),
+        const SnackBar(
+            content: Text('Selecciona una clínica primero')),
       );
       return;
     }
 
-    final nombreCtrl = TextEditingController(text: sede?.nombre ?? '');
+    final nombreCtrl =
+        TextEditingController(text: sede?.nombre ?? '');
     final esEdicion = sede != null;
+
     final guardado = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(esEdicion ? 'Editar sede' : 'Nueva sede'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Clínica: ${clinica.nombre}',
-              style: Theme.of(ctx).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: nombreCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Nombre de la sede',
-                border: OutlineInputBorder(),
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const AdminIconAvatar(
+                    icon: Icons.location_city_outlined,
+                    color: Color(0xFF00897B),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          esEdicion
+                              ? 'Editar sede'
+                              : 'Nueva sede',
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: AdminColors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          clinica.nombre,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AdminColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              autofocus: true,
-              textCapitalization: TextCapitalization.words,
-            ),
-          ],
+              const SizedBox(height: 24),
+              TextField(
+                controller: nombreCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre de la sede',
+                  prefixIcon:
+                      Icon(Icons.place_outlined, size: 20),
+                ),
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () =>
+                        Navigator.pop(ctx, false),
+                    child: const Text('Cancelar'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () {
+                      if (nombreCtrl.text.trim().isEmpty)
+                        return;
+                      Navigator.pop(ctx, true);
+                    },
+                    child: Text(
+                        esEdicion ? 'Guardar cambios' : 'Crear'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (nombreCtrl.text.trim().isEmpty) return;
-              Navigator.pop(ctx, true);
-            },
-            child: Text(esEdicion ? 'Guardar' : 'Crear'),
-          ),
-        ],
       ),
     );
+
     if (guardado != true || !mounted) {
       nombreCtrl.dispose();
       return;
@@ -182,84 +224,68 @@ class _AdminSedeScreenState extends State<AdminSedeScreen> {
         ),
       );
       if (!mounted) return;
-      if (res.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sede actualizada')),
-        );
-        await _cargarSedes(silencioso: true);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(res.errorMessage ?? 'Error al actualizar')),
-        );
-      }
+      _snack(
+        res.isSuccess ? 'Sede actualizada' : res.errorMessage,
+        esError: !res.isSuccess,
+      );
+      if (res.isSuccess) await _cargarSedes(silencioso: true);
     } else {
       final res = await _sedeApi.crear(
-        SedeInput(idClinica: clinica.idClinica, nombre: nombre),
+        SedeInput(
+            idClinica: clinica.idClinica, nombre: nombre),
       );
       if (!mounted) return;
-      if (res.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sede creada')),
-        );
-        await _cargarSedes(silencioso: true);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(res.errorMessage ?? 'Error al crear')),
-        );
-      }
+      _snack(
+        res.isSuccess ? 'Sede creada' : res.errorMessage,
+        esError: !res.isSuccess,
+      );
+      if (res.isSuccess) await _cargarSedes(silencioso: true);
     }
   }
 
   Future<void> _confirmarEliminar(Sede sede) async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Eliminar sede'),
-        content: Text('¿Eliminar "${sede.nombre}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
+    final ok = await showDeleteDialog(
+      context,
+      title: 'Eliminar sede',
+      content:
+          '¿Eliminar la sede "${sede.nombre}"? Esta acción no se puede deshacer.',
     );
-    if (confirmar != true || !mounted) return;
-
+    if (!ok || !mounted) return;
     final res = await _sedeApi.eliminar(sede);
     if (!mounted) return;
-    if (res.isSuccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sede eliminada')),
-      );
-      await _cargarSedes(silencioso: true);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res.errorMessage ?? 'Error al eliminar')),
-      );
-    }
+    _snack(
+      res.isSuccess ? 'Sede eliminada' : res.errorMessage,
+      esError: !res.isSuccess,
+    );
+    if (res.isSuccess) await _cargarSedes(silencioso: true);
+  }
+
+  void _snack(String? msg, {bool esError = false}) {
+    if (msg == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text(msg),
+          backgroundColor:
+              esError ? AdminColors.danger : null),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final cargando = _cargandoClinicas || _cargandoSedes;
-  final sinClinica = !_cargandoClinicas && _clinicas.isEmpty;
+    final sinClinica =
+        !_cargandoClinicas && _clinicas.isEmpty;
 
     return Scaffold(
+      backgroundColor: AdminColors.surface,
       appBar: AppBar(
-        title: const Text('Panel admin — Sedes'),
+        title: const Text('Sedes'),
+        backgroundColor: AdminColors.navy,
         actions: [
           IconButton(
             onPressed: cargando ? null : _cargarSedes,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Actualizar sedes',
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Actualizar',
           ),
         ],
       ),
@@ -269,110 +295,120 @@ class _AdminSedeScreenState extends State<AdminSedeScreen> {
             : () => _mostrarFormulario(),
         icon: const Icon(Icons.add),
         label: const Text('Nueva sede'),
+        backgroundColor: AdminColors.navy,
       ),
       body: _cargandoClinicas
           ? const Center(child: CircularProgressIndicator())
           : sinClinica
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text(
-                      'No hay clínicas. Crea una clínica antes de asignar sedes.',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+              ? const AdminEmptyState(
+                  message:
+                      'No hay clínicas registradas.\nCrea una clínica antes de añadir sedes.',
+                  icon: Icons.location_city_outlined,
                 )
               : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      child: DropdownButtonFormField<Clinica>(
-                        value: _clinicaSeleccionada,
-                        decoration: const InputDecoration(
-                          labelText: 'Clínica',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _clinicas
-                            .map(
-                              (c) => DropdownMenuItem(
-                                value: c,
-                                child: Text(c.nombre),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: cargando ? null : _onClinicaChanged,
+                    // Selector de clínica
+                    Container(
+                      color: Colors.white,
+                      padding:
+                          const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                      child: Column(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'CLÍNICA',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.2,
+                              color: AdminColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<Clinica>(
+                            value: _clinicaSeleccionada,
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(
+                                  Icons.local_hospital_outlined,
+                                  size: 20),
+                            ),
+                            items: _clinicas
+                                .map(
+                                  (c) => DropdownMenuItem(
+                                    value: c,
+                                    child: Text(c.nombre),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: cargando
+                                ? null
+                                : _onClinicaChanged,
+                          ),
+                        ],
                       ),
                     ),
                     if (_error != null)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          _error!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
+                      Container(
+                        width: double.infinity,
+                        color: AdminColors.danger
+                            .withOpacity(0.08),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.warning_amber,
+                                color: AdminColors.danger,
+                                size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _error!,
+                                style: const TextStyle(
+                                  color: AdminColors.danger,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     Expanded(
                       child: _cargandoSedes
-                          ? const Center(child: CircularProgressIndicator())
+                          ? const Center(
+                              child:
+                                  CircularProgressIndicator())
                           : _sedes.isEmpty
-                              ? const Center(
-                                  child: Text(
-                                    'No hay sedes para esta clínica',
-                                  ),
+                              ? AdminEmptyState(
+                                  message:
+                                      'No hay sedes para ${_clinicaSeleccionada?.nombre ?? 'esta clínica'}',
+                                  icon: Icons.place_outlined,
                                 )
                               : RefreshIndicator(
                                   onRefresh: _cargarSedes,
-                                  child: ListView.separated(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      8,
-                                      16,
-                                      88,
-                                    ),
+                                  child: ListView.builder(
+                                    padding:
+                                        const EdgeInsets.fromLTRB(
+                                            16, 16, 16, 100),
                                     itemCount: _sedes.length,
-                                    separatorBuilder: (_, __) =>
-                                        const Divider(height: 1),
-                                    itemBuilder: (context, index) {
+                                    itemBuilder:
+                                        (context, index) {
                                       final s = _sedes[index];
-                                      return ListTile(
-                                        title: Text(s.nombre),
-                                        subtitle: Text(
-                                          s.idSede,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall,
+                                      return AdminItemCard(
+                                        title: s.nombre,
+                                        subtitle: s.idSede,
+                                        leading: const AdminIconAvatar(
+                                          icon: Icons
+                                              .place_outlined,
+                                          color:
+                                              Color(0xFF00897B),
                                         ),
-                                        trailing: PopupMenuButton<String>(
-                                          onSelected: (value) {
-                                            if (value == 'editar') {
-                                              _mostrarFormulario(sede: s);
-                                            } else if (value == 'eliminar') {
-                                              _confirmarEliminar(s);
-                                            }
-                                          },
-                                          itemBuilder: (_) => const [
-                                            PopupMenuItem(
-                                              value: 'editar',
-                                              child: ListTile(
-                                                leading: Icon(Icons.edit),
-                                                title: Text('Editar'),
-                                                contentPadding: EdgeInsets.zero,
-                                              ),
-                                            ),
-                                            PopupMenuItem(
-                                              value: 'eliminar',
-                                              child: ListTile(
-                                                leading:
-                                                    Icon(Icons.delete_outline),
-                                                title: Text('Eliminar'),
-                                                contentPadding: EdgeInsets.zero,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                        onEdit: () =>
+                                            _mostrarFormulario(
+                                                sede: s),
+                                        onDelete: () =>
+                                            _confirmarEliminar(
+                                                s),
                                       );
                                     },
                                   ),

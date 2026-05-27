@@ -107,7 +107,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	// Domain vacío: válido al conectar por IP (móvil en red local). La app también usa `token` en JSON.
-	c.SetCookie("smart_session", tokenString, 3600, "/", "", false, true)
+	// 86400 segundos = 24 horas. El penúltimo 'false' deberá cambiar a 'true' cuando subas esto a producción con HTTPS.
+	c.SetCookie("smart_session", tokenString, 86400, "/", "", false, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"Mensaje": "Usuario ingresado",

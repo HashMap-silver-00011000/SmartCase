@@ -5,7 +5,7 @@
 abstract final class ApiConstants {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    // Cambia localhost por la IP real de tu PC
-    defaultValue: 'http://192.168.56.1:8080', 
+    // URL de tu despliegue en Render
+    defaultValue: 'https://smartcase-k1tf.onrender.com', 
   );
 }
