@@ -57,8 +57,7 @@ class _AdminSedeScreenState extends State<AdminSedeScreen> {
         }
       }
     }
-    seleccionada ??=
-        res.data!.isNotEmpty ? res.data!.first : null;
+    seleccionada ??= res.data!.isNotEmpty ? res.data!.first : null;
     setState(() {
       _cargandoClinicas = false;
       _clinicas = res.data!;
@@ -80,16 +79,14 @@ class _AdminSedeScreenState extends State<AdminSedeScreen> {
       });
     }
     try {
-      final res =
-          await _sedeApi.listarPorClinica(clinica.idClinica);
+      final res = await _sedeApi.listarPorClinica(clinica.idClinica);
       if (!mounted) return;
       setState(() {
         if (res.isSuccess && res.data != null) {
           _sedes = res.data!;
           _error = null;
         } else {
-          _error =
-              res.errorMessage ?? 'Error al cargar sedes';
+          _error = res.errorMessage ?? 'Error al cargar sedes';
           if (!silencioso) _sedes = [];
         }
       });
@@ -114,130 +111,44 @@ class _AdminSedeScreenState extends State<AdminSedeScreen> {
     final clinica = _clinicaSeleccionada;
     if (clinica == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Selecciona una clínica primero')),
+        const SnackBar(content: Text('Selecciona una clínica primero')),
       );
       return;
     }
 
-    final nombreCtrl =
-        TextEditingController(text: sede?.nombre ?? '');
-    final esEdicion = sede != null;
-
-    final guardado = await showDialog<bool>(
+    final nombre = await showDialog<String>(
       context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  const AdminIconAvatar(
-                    icon: Icons.location_city_outlined,
-                    color: Color(0xFF00897B),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          esEdicion
-                              ? 'Editar sede'
-                              : 'Nueva sede',
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: AdminColors.textPrimary,
-                          ),
-                        ),
-                        Text(
-                          clinica.nombre,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AdminColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: nombreCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre de la sede',
-                  prefixIcon:
-                      Icon(Icons.place_outlined, size: 20),
-                ),
-                autofocus: true,
-                textCapitalization: TextCapitalization.words,
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () =>
-                        Navigator.pop(ctx, false),
-                    child: const Text('Cancelar'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: () {
-                      if (nombreCtrl.text.trim().isEmpty)
-                        return;
-                      Navigator.pop(ctx, true);
-                    },
-                    child: Text(
-                        esEdicion ? 'Guardar cambios' : 'Crear'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+      builder: (_) => _SedeFormDialog(sede: sede, clinica: clinica),
     );
 
-    if (guardado != true || !mounted) {
-      nombreCtrl.dispose();
-      return;
-    }
+    if (nombre == null || !mounted) return;
 
-    final nombre = nombreCtrl.text.trim();
-    nombreCtrl.dispose();
+    final messenger = ScaffoldMessenger.of(context);
 
-    if (esEdicion) {
+    if (sede != null) {
       final res = await _sedeApi.actualizar(
-        Sede(
-          idSede: sede.idSede,
-          idClinica: clinica.idClinica,
-          nombre: nombre,
-        ),
+        Sede(idSede: sede.idSede, idClinica: clinica.idClinica, nombre: nombre),
       );
       if (!mounted) return;
-      _snack(
-        res.isSuccess ? 'Sede actualizada' : res.errorMessage,
-        esError: !res.isSuccess,
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            res.isSuccess ? 'Sede actualizada' : res.errorMessage ?? '',
+          ),
+          backgroundColor: res.isSuccess ? null : AdminColors.danger,
+        ),
       );
       if (res.isSuccess) await _cargarSedes(silencioso: true);
     } else {
       final res = await _sedeApi.crear(
-        SedeInput(
-            idClinica: clinica.idClinica, nombre: nombre),
+        SedeInput(idClinica: clinica.idClinica, nombre: nombre),
       );
       if (!mounted) return;
-      _snack(
-        res.isSuccess ? 'Sede creada' : res.errorMessage,
-        esError: !res.isSuccess,
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(res.isSuccess ? 'Sede creada' : res.errorMessage ?? ''),
+          backgroundColor: res.isSuccess ? null : AdminColors.danger,
+        ),
       );
       if (res.isSuccess) await _cargarSedes(silencioso: true);
     }
@@ -264,17 +175,16 @@ class _AdminSedeScreenState extends State<AdminSedeScreen> {
     if (msg == null) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-          content: Text(msg),
-          backgroundColor:
-              esError ? AdminColors.danger : null),
+        content: Text(msg),
+        backgroundColor: esError ? AdminColors.danger : null,
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final cargando = _cargandoClinicas || _cargandoSedes;
-    final sinClinica =
-        !_cargandoClinicas && _clinicas.isEmpty;
+    final sinClinica = !_cargandoClinicas && _clinicas.isEmpty;
 
     return Scaffold(
       backgroundColor: AdminColors.surface,
@@ -300,122 +210,213 @@ class _AdminSedeScreenState extends State<AdminSedeScreen> {
       body: _cargandoClinicas
           ? const Center(child: CircularProgressIndicator())
           : sinClinica
-              ? const AdminEmptyState(
-                  message:
-                      'No hay clínicas registradas.\nCrea una clínica antes de añadir sedes.',
-                  icon: Icons.location_city_outlined,
-                )
-              : Column(
-                  children: [
-                    // Selector de clínica
-                    Container(
-                      color: Colors.white,
-                      padding:
-                          const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'CLÍNICA',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.2,
-                              color: AdminColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          DropdownButtonFormField<Clinica>(
-                            value: _clinicaSeleccionada,
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(
-                                  Icons.local_hospital_outlined,
-                                  size: 20),
-                            ),
-                            items: _clinicas
-                                .map(
-                                  (c) => DropdownMenuItem(
-                                    value: c,
-                                    child: Text(c.nombre),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: cargando
-                                ? null
-                                : _onClinicaChanged,
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (_error != null)
-                      Container(
-                        width: double.infinity,
-                        color: AdminColors.danger
-                            .withOpacity(0.08),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.warning_amber,
-                                color: AdminColors.danger,
-                                size: 16),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _error!,
-                                style: const TextStyle(
-                                  color: AdminColors.danger,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ],
+          ? const AdminEmptyState(
+              message:
+                  'No hay clínicas registradas.\nCrea una clínica antes de añadir sedes.',
+              icon: Icons.location_city_outlined,
+            )
+          : Column(
+              children: [
+                // Selector de clínica
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'CLÍNICA',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                          color: AdminColors.textSecondary,
                         ),
                       ),
-                    Expanded(
-                      child: _cargandoSedes
-                          ? const Center(
-                              child:
-                                  CircularProgressIndicator())
-                          : _sedes.isEmpty
-                              ? AdminEmptyState(
-                                  message:
-                                      'No hay sedes para ${_clinicaSeleccionada?.nombre ?? 'esta clínica'}',
-                                  icon: Icons.place_outlined,
-                                )
-                              : RefreshIndicator(
-                                  onRefresh: _cargarSedes,
-                                  child: ListView.builder(
-                                    padding:
-                                        const EdgeInsets.fromLTRB(
-                                            16, 16, 16, 100),
-                                    itemCount: _sedes.length,
-                                    itemBuilder:
-                                        (context, index) {
-                                      final s = _sedes[index];
-                                      return AdminItemCard(
-                                        title: s.nombre,
-                                        subtitle: s.idSede,
-                                        leading: const AdminIconAvatar(
-                                          icon: Icons
-                                              .place_outlined,
-                                          color:
-                                              Color(0xFF00897B),
-                                        ),
-                                        onEdit: () =>
-                                            _mostrarFormulario(
-                                                sede: s),
-                                        onDelete: () =>
-                                            _confirmarEliminar(
-                                                s),
-                                      );
-                                    },
-                                  ),
-                                ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<Clinica>(
+                        value: _clinicaSeleccionada,
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(
+                            Icons.local_hospital_outlined,
+                            size: 20,
+                          ),
+                        ),
+                        items: _clinicas
+                            .map(
+                              (c) => DropdownMenuItem(
+                                value: c,
+                                child: Text(c.nombre),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: cargando ? null : _onClinicaChanged,
+                      ),
+                    ],
+                  ),
                 ),
+                if (_error != null)
+                  Container(
+                    width: double.infinity,
+                    color: AdminColors.danger.withOpacity(0.08),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.warning_amber,
+                          color: AdminColors.danger,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _error!,
+                            style: const TextStyle(
+                              color: AdminColors.danger,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                Expanded(
+                  child: _cargandoSedes
+                      ? const Center(child: CircularProgressIndicator())
+                      : _sedes.isEmpty
+                      ? AdminEmptyState(
+                          message:
+                              'No hay sedes para ${_clinicaSeleccionada?.nombre ?? 'esta clínica'}',
+                          icon: Icons.place_outlined,
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _cargarSedes,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                            itemCount: _sedes.length,
+                            itemBuilder: (context, index) {
+                              final s = _sedes[index];
+                              return AdminItemCard(
+                                title: s.nombre,
+                                subtitle: s.idSede,
+                                leading: const AdminIconAvatar(
+                                  icon: Icons.place_outlined,
+                                  color: Color(0xFF00897B),
+                                ),
+                                onEdit: () => _mostrarFormulario(sede: s),
+                                onDelete: () => _confirmarEliminar(s),
+                              );
+                            },
+                          ),
+                        ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+class _SedeFormDialog extends StatefulWidget {
+  const _SedeFormDialog({this.sede, required this.clinica});
+  final Sede? sede;
+  final Clinica clinica;
+
+  @override
+  State<_SedeFormDialog> createState() => _SedeFormDialogState();
+}
+
+class _SedeFormDialogState extends State<_SedeFormDialog> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.sede?.nombre ?? '');
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final esEdicion = widget.sede != null;
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const AdminIconAvatar(
+                  icon: Icons.location_city_outlined,
+                  color: Color(0xFF00897B),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        esEdicion ? 'Editar sede' : 'Nueva sede',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: AdminColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        widget.clinica.nombre,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AdminColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: _ctrl,
+              decoration: const InputDecoration(
+                labelText: 'Nombre de la sede',
+                prefixIcon: Icon(Icons.place_outlined, size: 20),
+              ),
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, null),
+                  child: const Text('Cancelar'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () {
+                    final v = _ctrl.text.trim();
+                    if (v.isEmpty) return;
+                    Navigator.pop(context, v);
+                  },
+                  child: Text(esEdicion ? 'Guardar cambios' : 'Crear'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

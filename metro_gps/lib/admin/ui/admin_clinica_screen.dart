@@ -42,108 +42,40 @@ class _AdminClinicaScreenState extends State<AdminClinicaScreen> {
     });
   }
 
-  Future<void> _mostrarFormulario({Clinica? clinica}) async {
-    final nombreCtrl =
-        TextEditingController(text: clinica?.nombre ?? '');
-    final esEdicion = clinica != null;
+Future<void> _mostrarFormulario({Clinica? clinica}) async {
+  final esEdicion = clinica != null;
 
-    final guardado = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => Dialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  AdminIconAvatar(
-                    icon: esEdicion
-                        ? Icons.edit_outlined
-                        : Icons.local_hospital_outlined,
-                    color: const Color(0xFF0096C7),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    esEdicion ? 'Editar clínica' : 'Nueva clínica',
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: AdminColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: nombreCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre de la clínica',
-                  prefixIcon:
-                      Icon(Icons.business_outlined, size: 20),
-                ),
-                autofocus: true,
-                textCapitalization: TextCapitalization.words,
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text('Cancelar'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: () {
-                      if (nombreCtrl.text.trim().isEmpty) return;
-                      Navigator.pop(ctx, true);
-                    },
-                    child:
-                        Text(esEdicion ? 'Guardar cambios' : 'Crear'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  // Returns the trimmed name string, or null if cancelled
+  final nombre = await showDialog<String>(
+    context: context,
+    builder: (_) => _ClinicaFormDialog(clinica: clinica),
+  );
 
-    if (guardado != true || !mounted) {
-      nombreCtrl.dispose();
-      return;
-    }
+  if (nombre == null || !mounted) return;
 
-final nombre = nombreCtrl.text.trim();
-  nombreCtrl.dispose();
-
-  // ✅ Guardar referencias ANTES del await
   final messenger = ScaffoldMessenger.of(context);
 
   if (esEdicion) {
     final res = await _api.actualizar(
-        Clinica(idClinica: clinica.idClinica, nombre: nombre));
+      Clinica(idClinica: clinica.idClinica, nombre: nombre),
+    );
     if (!mounted) return;
-    messenger.showSnackBar(SnackBar(  
-      content: Text(res.isSuccess ? 'Clínica actualizada' : res.errorMessage ?? ''),
+    messenger.showSnackBar(SnackBar(
+      content: Text(
+          res.isSuccess ? 'Clínica actualizada' : res.errorMessage ?? ''),
       backgroundColor: res.isSuccess ? null : AdminColors.danger,
     ));
     if (res.isSuccess) await _cargarLista();
   } else {
     final res = await _api.crear(ClinicaInput(nombre: nombre));
     if (!mounted) return;
-    messenger.showSnackBar(SnackBar(  
+    messenger.showSnackBar(SnackBar(
       content: Text(res.isSuccess ? 'Clínica creada' : res.errorMessage ?? ''),
       backgroundColor: res.isSuccess ? null : AdminColors.danger,
     ));
     if (res.isSuccess) await _cargarLista();
   }
-  }
-
+}
   Future<void> _confirmarEliminar(Clinica clinica) async {
     final ok = await showDeleteDialog(
       context,
@@ -350,6 +282,97 @@ class _ClinicaCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+
+class _ClinicaFormDialog extends StatefulWidget {
+  const _ClinicaFormDialog({this.clinica});
+  final Clinica? clinica;
+
+  @override
+  State<_ClinicaFormDialog> createState() => _ClinicaFormDialogState();
+}
+
+class _ClinicaFormDialogState extends State<_ClinicaFormDialog> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.clinica?.nombre ?? '');
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();   // Flutter calls this at the right time
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final esEdicion = widget.clinica != null;
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                AdminIconAvatar(
+                  icon: esEdicion
+                      ? Icons.edit_outlined
+                      : Icons.local_hospital_outlined,
+                  color: const Color(0xFF0096C7),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  esEdicion ? 'Editar clínica' : 'Nueva clínica',
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: AdminColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: _ctrl,
+              decoration: const InputDecoration(
+                labelText: 'Nombre de la clínica',
+                prefixIcon: Icon(Icons.business_outlined, size: 20),
+              ),
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, null),
+                  child: const Text('Cancelar'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () {
+                    final v = _ctrl.text.trim();
+                    if (v.isEmpty) return;
+                    Navigator.pop(context, v); // returns the name string
+                  },
+                  child: Text(esEdicion ? 'Guardar cambios' : 'Crear'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
