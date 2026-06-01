@@ -1,4 +1,4 @@
-#Telemetría y Control Bluetooth
+# Telemetría y Control Bluetooth
 
 Este es el código principal para el ESP32. Básicamente, se encarga de leer los datos de varios sensores (temperatura, humedad, luz, aceleración/impactos y GPS), empaquetar todo en un JSON y mandarlo por Bluetooth Classic. Además, se queda escuchando por si la app le manda el comando para mover un servomotor y abrir la caja.
 
