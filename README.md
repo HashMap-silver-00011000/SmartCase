@@ -49,6 +49,26 @@ restringir la apertura de la nevera únicamente en las coordenadas autorizadas d
 alertar de manera inmediata sobre posibles compromisos en la integridad física de las
 muestras transportadas.
 
+# Ejecuta el BACKEND en tu maquína
+
+## Requisitos
+
+- Go en tu [maquina](https://go.dev/doc/install)
+- Base de datos [PostgreeSQL](https://www.postgresql.org/download/)
+- Copiar la estructura del archivo .env-example, luego de forma local crear el archivo .env
+
+## Pasos para la ejecución
+
+### INSTALACIÓN
+1. Clona el repositorio
+   ```bash
+   git clone [https://[github.com/HashMap-silver-00011000/SmartCase](https://github.com/HashMap-silver-00011000/SmartCase)
+    
+
+2. Navegar al directorio del proyecto
+   ```bash
+   cd SmartCase
+
 
 
 
