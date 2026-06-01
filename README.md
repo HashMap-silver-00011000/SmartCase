@@ -75,7 +75,7 @@ muestras transportadas.
 
 	cfg := config.LoadConfig()
 
-   conexionDB , err := database.ConectarDB(cfg)
+   conexionDB , err : database.ConectarDB(cfg)
   	if err != nil {
 		log.Fatalf("Error fatal: No se pudo conectar a PostgreSQL: %v", err)
 	}
@@ -97,5 +97,32 @@ muestras transportadas.
 	}
   }
 
-  
-=
+ Realizar los ajustes en el main con la finalidad de ejecutar el proyecto de forma local es una alternativa al uso de Render, por defecto el proyecto ya está configurado para que trabaje en Render
+
+# Ejecución del FRONTEND
+
+## Requisitos
+
+- [Android SDK](https://developer.android.com/studio?gclsrc=aw.ds&gad_source=1&gad_campaignid=21831783795&gclid=Cj0KCQjw2_TQBhCnARIsAF3-XhzFfDFPppg3FoI3jIKe9y9YIVsxszqc51TQltD84YKb1wwVc8y4RVgaAmbSEALw_wcB&hl=es-419)
+- [Flutter](https://docs.flutter.dev/install)
+
+
+Para ejecutar el frontend de **metro_gps** localmente y permitir que la aplicación móvil se comunique correctamente con el servidor backend de desarrollo, se deben seguir los siguientes pasos:
+
+ 1. Ubicarse en el directorio raíz
+Estar posicionado dentro de la carpeta principal del proyecto:
+```bash
+cd metro_gps
+
+```
+2.Habilitar el puertoon ADB (Solo para Android)
+```bash
+adb reverse tcp:8080 tcp:8080
+```
+
+3.Ejecutar la aplicación en Flutter
+```bash
+flutter run --dart-define=API_BASE_URL=http://localhost:8080
+```
+
+
