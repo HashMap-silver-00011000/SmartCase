@@ -33,6 +33,7 @@ equipos comerciales de transporte especializado. Este sistema garantiza la calid
 protege la validez de las pruebas diagnósticas y asegura la confiabilidad institucional ante auditorías
 de salud pública, eliminando los errores humanos en la trazabilidad de los especímenes críticos.
 
+---
 
 ## Objetivos
 ### General
@@ -48,6 +49,8 @@ restringir la apertura de la nevera únicamente en las coordenadas autorizadas d
 - Programar un sistema de detección de impactos y vibraciones mediante acelerometría para
 alertar de manera inmediata sobre posibles compromisos en la integridad física de las
 muestras transportadas.
+
+---
 
 # Ejecuta el BACKEND en tu maquína
 
@@ -98,6 +101,8 @@ muestras transportadas.
   }
 
  Realizar los ajustes en el main con la finalidad de ejecutar el proyecto de forma local es una alternativa al uso de Render, por defecto el proyecto ya está configurado para que trabaje en Render
+
+---
 
 # Ejecución del FRONTEND
 
